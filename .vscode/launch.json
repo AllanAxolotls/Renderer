@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Renderer}",
+            "name": "Debug Renderer",
+            "target": "Renderer",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Renderer"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Renderer}",
+            "name": "Release Renderer",
+            "target": "Renderer",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Renderer"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Renderer}",
+            "name": "Debug Core",
+            "target": "Core",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Core"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Renderer}",
+            "name": "Release Core",
+            "target": "Core",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Core"
+        }
+    ]
+}
