@@ -294,7 +294,7 @@ Textures werken eindelijk ook voor de Raytracer. Vanaf nu kan ik eindelijk focus
 
 29-5-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
-[ 22:20 - (duur: ) ]
+[ 22:20 - 23:30 (duur: 1 uur 10 min. ) ]
 Git repro maken, en logboek importeren en alvast wat mooier indelen
 
 
