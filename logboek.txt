@@ -1,0 +1,303 @@
+PWS LOG
+
+10-3-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:20-17:30 (duur: 4 uur, 10 min.) ]
+Apple Metal Documentation lezen
+(Waar werkt metal mee, de render pipeline, render encoders en dat soort dingen)
+
+
+21-3-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 21:20-22:31 (duur: 1 uur 11 min.) ]
+Metal Shading Language Documentation lezen
+Bron: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
+gelezen: p.1-p.78
+geleerd: 
+* wat is swizzling 
+* Metal gebruikt in NDC-space een LHS coordinate system 
+* wat zijn packed datatypes 
+* Metal gebruikt column-first-order in matrices 
+* wat is een texture sampler
+* wat zijn uniform types 
+* Metal support raytracing acceleration en andere inbuilt raytracing structs, maar mijn GPU heeft geen raytracing acceleration :(
+
+[ 22:58-23:14 (duur: 16 min.) ]
+Onderzoeken hoe Pixel space coordinates worden geconverteerd in een Ray directie vector, met een tekening: Schets1
+Ik heb hier al kennis over door triangle-rasterization:
+https://youtu.be/ih20l3pJoeU?si=ARbUCrNReK4mCc5q
+
+
+24-3-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:12-16:41 (duur: 39 min.) ]
+Wanneer intersect een ray een driehoek, wat zijn barycentrische coördinaten?
+
+
+25-3-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:10-14:46 (duur: 1 uur, 36 min.) ]
+Möller-Trumbore ray-triangle intersection algorithm bekijken met chatgpt prompt: Prompt1.rtfd, TriangleRayIntersect.png met berekeningen
+25-3-2026 20:22-21:00 (duur: 38 min.)
+verder onderzoeken hoe het werkt
+https://youtu.be/fK1RPmF_zjQ?is=gdJNu26TM5u0NtcW
+
+Goeie samenvatting van raytracing:
+https://youtu.be/wzZJzyX0UkI?is=ID6JF66kD5k2cWT5
+
+[ 25-3-2026 21:25-22:28 (duur: 1 uur, 3 min.) ]
+Dot Product (Het Inproduct)
+https://youtu.be/LyGKycYT2v0?is=P6fsu2szBCq-17K7
+De Determinant (de factor waarmee een oppervlakte van een vector en een andere vector wordt vermenigvuldigd bij die lineaire transformatie is |det| ) 
+Als det = 0 dan verlies je een dimensie na matrix transformatie en daarom bestaat er geen inverse matrix voor want info is verloren , als det < 0 dan is de oriëntatie omgekeerd
+https://youtu.be/Ip3X9LOh2dk?is=YVOY-c7faYCjy4QD
+
+Cross Product (Het Uitproduct)
+https://youtu.be/eu6i7WJeinw?is=ZZxgQl657hl6Tiv9
+[v1,v2,v3] x [w1,w2,w3] = det([î, v1, w1, 
+                               j^, v2, w2,
+                               k^, v2, w3])
+= î(v2w3-v3w2) + j^ * (v3w1 - v1w3) + k^ * (v1w2 - v2w1) waarbij i,j,k complexe getallen zijn en de unit vectors van het 3D assenstelsel, 
+door deze 3 getallen is het getal dat uit det(…) komt niet 1 dimensionaal maar 3D! en daarom is het uitproduct een vector en niet alleen een getal
+https://youtu.be/BaM7OCEm3G0?is=kgQoTqPTwVxOIq_U
+Introductie van Cramer’s rule (ik snap het nog niet)
+https://youtu.be/jBsC34PxzoM?is=dbzHwgCSGp0oE_om
+
+
+27-3-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 23:55-00:15 (duur: 20 min.) ]
+determinant van 3x3 matrix begrijpen
+https://youtu.be/Sv7VseMsOQc?is=JM6st9qv7jhCmCzL
+
+
+28-3-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 18:08-19:15 (duur: 1 uur, 7 min.) ]
+Verder proberen te begrijpen hoe Möller-Trumbore algoritme werkt, Cramer’s rule geleerd: https://youtu.be/jBsC34PxzoM?is=Q9VbXHxgP3O2i5pE
+20:36-21:16 (duur: 40 min.)
+Ik snap veel beter hoe het algoritme werkt! (Triple Scalar Product) a dot (b cross c) = det(3x3 matrix)
+https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html
+[ 22:34-23:29 (duur: 55 min.) ]
+Wat zijn Quaternions nou?
+https://youtu.be/d4EgbgTm0Bg?is=xveQDFqM3xHxQUI1
+
+
+29-3-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 18:16-18:52 (duur: 36 min.) ]
+Proberen ray intersect triangle algoritme te programmeren met swift en het af te beelden in een .png, maar het lukt niet helemaal 
+want in Metal shading language is alles streng
+
+
+4-4-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 21:00-23:51 (duur: 2 uur, 51 min.) ]
+Swift Programma maken die een image generate op de CPU. Kijken of ik FOV en aspect ratio wiskunde al kan toepassen. 
+Aspect ratio brengt me in de war dus begin met vierkant plaatje. Ik heb een vector field gemaakt van look-vectors richting waar de pixels in 3D van de camera afliggen, 
+het heet vectorField1.png . Eerste driehoek getekend! Ik probeer nu een .obj en .mtl importer te maken zodat ik 3D files kan importeren en testen, 
+maar de code die ik gebruik is van een eerder project die afhankelijk is van Metal dus kost iets meer moeite om het aan te passen. 
+
+
+15-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 8:00-10:12 (duur 2: uur, 12 min.) ]
+Plan van aanpak opstellen, met bronnen, hoofd- en deelvragen, verwachtingen, planning, etc.
+
+
+19-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:58-18:20 (duur: 1 uur, 22 min.) ]
+Swift documentation doorlezen
+https://www.swift.org/documentation/core-libraries/
+Betere file structuur gemaakt: In plaats van 1 .swift file, nu gesorteerd in 5: Main, Raycaster, Object, Importer en ImageCreator. 
+Eerste .obj file is geïmporteerd! Simpele zonlicht calculatie per driehoek (later doel per pixel) 
+File importer support clockwise en counterclockwise winding order van driehoeken.
+
+[ 19:28-20:42 (duur: 1 uur, 14 min.) ]
+Eerste .obj getest met ~600 faces, duurde 80 seconden om een .png te maken met een resolutie van 500x500… Er was een klein foutje in de lightIntensity calculatie, 
+de Normal vector van de raycast was niet genormaliseerd wat zorge voor een te groot getal in de :Dot()
+En nog een fout: de dichtstbijzijnde driehoek moet gekozen worden als raycastresult, niet EEN driehoek.
+Ik ben van plan de triangle rasterizer engine die ik al heb te gebruiken als fallback graphics engine,
+zodat de user een locatie kan kiezen die gerendered moet worden met raytracing omdat het zo lang duurt. 
+Het zal waarschijnlijk zelfs op de GPU met optimisations niet 30 FPS zijn
+
+
+20-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 9:12-10:00 (duur: 48 min.) ]
+Doel: Kijken hoe per pixel de Interpolated Vertex Normal voor een driehoek kan worden berekend om smooth shading in plaats van triangle shading te krijgen. 
+Dit kan met deze formule met behulp van barycentrische coordinaten: N ‎ =  normalize(alfa * N0 + beta * N1 + gamma * N3) 
+waarbij barycentrische coordinaten zijn: (alfa, beta, gamma) (alfa + beta + gamma = 1 normaal gesproken)
+GPUs interpoleren dit automatisch, maar omdat ik het programma voor een CPU maak, moet ik dat handmatig uitrekenen
+Ik moet dus toevoegen dat de barycentrische coordinaten worden meegegeven in de RaycastResult. 
+Het Möller-Trumbore algoritme rekend gelukkig al 2 van de 3 barycentrische getallen uit, 
+en de derde kan worden berekend met: w = 1-u-v (u en v zijn de variabelen die worden gebruikt) 
+In mijn code behoort w tot vertex1, u tot vertex2 en v tot vertex3.
+
+Ik moet nu bepalen of ik een LHS or RHS gebruik voor de 3D ruimte, en of ik CCW of CW winding order gebruik voor driehoeken.
+Ik kies: LHS (z+ weg van mij, x+ naar rechts en y+ omhoog) met CCW. Voor het uitproduct is dit belangrijk. 
+Ik heb die nodig om de normaal van een driehoek te berekenen met behulp van de zijden. 
+Bij LHS geldt: +z-as ‎ =  uit_product(x-as, y-as) en -z-as ‎ =  uit_product(y-as, x-as).
+
+Als Vertex Normals missen in de .obj file is de fallback nu dat de triangle normal wordt gebruikt (en dus Triangle Shading). 
+Met smooth shading duurt het nog steeds ~80 seconde voor een 500x500 image met een .obj file met ~600 faces.
+Ik kwam er achter dat ik per ongeluk de lighting calculations verkeerd om had gedaan.. 
+Ik nam het inproduct van de Zon richting (0, -1, 0) en de geïnterpoleerde normaal, maar ik had die lightIntensity evenredig gemaakt met het inproduct, 
+dus juist wanneer een normaal met de zon richting mee ging werd die lichter (dat moet juist niet, het moet omgekeerd evenredig). 
+Nu klopt het licht eindelijk na een dag verward zijn. 
+Deze manier van licht is tijdelijk want het is de bedoeling dat de lichtIntensiteit alleen omhoog moet gaan als die driehoek ook daadwerkelijk in het licht staat, 
+en met een simpele inproduct calculatie van een licht richting en de normaal, is niet genoeg. 
+Er kan namelijk een driehoek boven zitten die het licht hoort tegen te houden, maar daar wordt nu nog geen rekening mee gehouden. 
+
+
+<< TOTALE DUUR TOT NU TOE: 1203 minuten oftewel 20 uur en 3 minuten >>
+
+
+[ 10:58-11:52 (duur: 54 min.) ]
+Doel: UV interpolatie en textures toevoegen.
+Nodig: 
+- Hoe open je image files met Swift als Data?: met CGImage en CGContent
+- Hoe index je die Image?  Het is een [UInt8] array, gewoon array[(y * width + x) * 4] doen (een pixel bevat 4 getallen: RGBA)
+- Hoe interpoleer je UV coordinaten? Zelfde als met de Normals, alleen hoeft het niet genormaliseerd te worden.
+En het is gelukt! nu is het met een texture + super simpel licht.
+Volgende doelen voor volgende keer: World/Local Transformation Matrix, Camera View Matrix en BVH
+
+[ 11:57-12:17 (duur: 20 min.) ]
+“importAtOrigin” optie toegevoegd aan Importer.swift zodat meshes allemaal gecentraliseerd in de origin zijn. 
+Dit doe ik door een gemiddelde te nemen van alle vertices van het object, en dan alle vertices posities te verminderen met het gemiddelde.
+Ik heb een 1920x1080 image gegenereerd, het duurde: 687 seconden. 
+Ik ga kijken of ik async kan toepassen op elke pixel om hopelijk meerdere CPU cores in werking te laten gaan waardoor het proces sneller zou kunnen verlopen.
+De image die is gegenereerd is wel de goeie resolutie maar de aspect ratio klopt voor geen meter, 
+blijkbaar ben ik vergeten aspect ratio te verwerken in de raycast pixel berekeningen. Het ziet er lachwekkend uit.
+
+
+21-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:03-10:25 (duur: 1 uur, 22 min.) ]
+Skybox maken met .hdr texture. Echt een nachtmerrie, apple CGImage support niet heel goed .hdr textures en dus zou ik een custom library moeten gebruiken 
+en daar heb ik voor nu geen zin in dus ik heb er voor gekozen om een gradient sky te gebruiken.
+
+[ 16:28-20:53 (duur: 4 uur, 25 min.) ]
+3X sneller door DispatchQueue.concurrentPerform() (Van ~300 seconden naar ~100) 
+Er worden nu zoveel mogelijk rijen tegelijk gedaan. Het is blijkbaar meer efficient om Tiles te gebruiken ipv per rij voor Cache Locality, 
+waarbij data dichtbij elkaar zit en dus minder cache flushes te hoeven worden gedaan -> betere performance. 
+Dit doet Blender Cycles ook. 1920x1080 duurt nu 269 seconden ipv 687!
+Vandaag ga ik leren over BVH, het bestaat uit AABB ray intersection, 
+het recursief bouwen van de BVH en het aflopen van de BVH om te kijken of een ray een driehoek kruist. 
+AABB is Axis Aligned Bounding Box en is heel makkelijk om mee te rekenen omdat het geen rotatie heeft. 
+Een AABB bestaat uit 8 punten maar kan vereenvoudigd worden tot slechts 2, een minimum en maximum punt. 
+Alle waarden x, y en z tussen deze twee punten zijn deel van de AABB.
+Swift werkte niet echt mee, de errors worden nogal vaag door die concurrentPerform(). 
+Na veel code refactoring en eindelijk een BVH class rendert ie.. niks, gewoon raycast gemist. 
+
+GELUKKIG bleek het een typfout te zijn en checkte het BVH algoritme perongeluk alleen de linker node elke keer en nooit de rechter kant. 
+En het werkt NU donderssnel! 0.2 seconden voor een 250x250 plaatje EN 1.1 seconden voor een 1920x1080 plaatje. 
+
+
+23-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:34-18:40 (duur: 2 uur, 6 min.) ]
+Ik ga proberen shadows toe te voegen door een ray te blijven schieten met weerkaatsing totdat de intersectie er niet is of totdat het limiet is bereikt per pixel.  
+Hoe meer weerkaatsingen voordat het de lucht bereikt, hoe donkerder. Reflecting Ray formule: 𝑅 = 2(N * I)N-I waarbij N = surface normal en I is de invallende Ray. 
+Simd heeft hier een function voor dus ik hoef het niet zelf toe te passen: simd_reflect(). 
+Maakte een klein foutje waardoor de volgende ray dezelfde Origin had en daardoor was elke schaduw helemaal zwart. 
+De code doet wat het hoort te doen, maar het idee is helemaal fout. De schaduws projecteren nu afhankelijk van de camera positie en niet van de zon, 
+als gevolg komen schaduwen op de raarste plekken. 
+Om het te versimpelen haal ik het idee van meerdere rays achterelkaar weg en maak ik maar 1 ray per light source en kijk of die ray de light source haalt zonder obstakel. 
+Dit zorgt echter voor harde schaduwen maar is wel veel efficienter om te calculeren. 
+Er zit voor een of andere reden heel veel noise in de shadow bij bollen en bij vlakken die evenwijdig met de zon rays staan. 
+Dat van de bol bleek te komen omdat de ray weer hetzelfde intersection point had dus de shadow ray ging twee keer door dezelfde driehoek. 
+Ik moet dus een Filter list toevoegen aan de functie zodat de oorspronkelijke wordt genegeerd. 
+Daarnaast moet deze shadow ray het niet uitmaken of driehoeken CW winding of CCW winding hebben. 
+Ik heb het gefixt maar ik zie nogsteeds dithering op de zijkanten van sommige vlakken. 
+Nu zien bollen er hilarisch uit want de helft is gewoon 50% donkerder in plaats van een smooth transition. 
+Ik kwam er maar niet uit dus ik ging googlen en er is dus een methode die heet: Monte Carlo en kan wel handig zijn
+
+
+24-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 00:46-01:16 (duur: 30 min.) ]
+Triangle Rasterizer App verbeteren. (Ik heb al een functionele gemaakt maar het moet kunnen switchen tussen Raytracing en het andere). 
+Het is maar 1 file, maar moet netjes worden verdeeld. Ik wil ook de Importer upgraden en raycasting toevoegen.
+
+[ 18:21-19:00 (duur: 39 min.) ]
+Verder herschrijven, heb eindelijk de shader sourcecode in een aparte file gezet, wordt geprecompiled met een makefile. 
+Ben nog niet helemaal tevreden met de file structure
+
+[ 20:52-21:30 (duur: 38 min.) ]
+Raycasting in rasterizer programma integreren
+
+[ 23:37-01:25 (duur: 1 uur, 48 min.) ]
+Ik heb al een groot begin gemaakt aan het integreren. De file structure is nu veel beter!  
+
+
+25-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:20-13:07 (duur: 1 uur, 47 min.) ]
+Ik heb als idee: ik maak een CGImage in Raytracing mode, en die wordt dan geprojecteerd als beeld, en met de compute shaders wordt die image in elkaar gezet. 
+Ik denk dat movement dan uit gaat in Raytracing Mode en dat je terug moet switchen naar Raster Mode om weer de camera te kunnen bewegen. 
+Ik heb meer dan een uur zitten debuggen om er achter te komen dat de FOV calculate verkeerd was: de rasterizer gebruikte FOV in radialen en de raycaster in graden. 
+Nu wanneer je op ‘R’ drukt dan raytracet het, maar nog zonder texture support omdat de rasterizer MTLTextures gebruikt en de raytracer CGimages als textures. 
+Ook sluit het programma gelijk af na het raytracen en savet de image ipv tonen in de app.
+Daarnaast wordt de camera rotatie van de rasterizer nog niet overgenomen naar de raytracer omdat ik helemaal geen camera rotatie had toegevoegd. 
+De raytrace code is nu ook nog geen shader en dus trager omdat het allemaal op de CPU wordt gedaan.
+
+[ 22:40-23:22 (duur: 42 min.) ]
+Eindelijk wanneer je R klikt switcht in de app de Pipeline van Render naar Compute en laat een gradient texture zien. 
+Ik ga nu de BVH niet recursief maar lineair maken.
+
+
+26-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 22:41-01:00 (duur: 2 uur, 19 min.) ]
+Doel: Hele Mesh en Triangle structure reworken zodat alles platter wordt en makkelijk kan worden overgezet naar de GPU. 
+Nu: Mesh -> Submeshes -> Triangles -> Vertices, maar wat beter kan: Mesh -> SubmeshIndices, Submeshes -> (VertexOffset, VertexCount) 
+waarbij alles in arrays staat: [Mesh], [SubMesh], [Vertex].
+
+
+27-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:03-12:12 (duur: 3 uur, 9 min.) ]
+Er zijn toch best veel dingen die ik nog niet weet over Swift die mijn code beter zouden kunnen maken, 
+dus ik ga de documentatie scannend lezen: https://docs.swift.org/swift-book/documentation/the-swift-programming-language/thebasics 
+Daarna ging ik verder aan de Importer rewriten. Het is ongelofelijk veel werk. 
+Na 2 en een half uur eindelijk klaar met de rewrite! Nu is de Triangle struct weg en werkt alles met indices en platte arrays
+
+[ 15:10-18:40 (duur: 3 uur, 30 min.) ]
+Eindelijk is de BVH ook plat gemaakt. Nu is het veel makkelijker om het om te zetten in GPU code. Er is weer een beeld, 
+als je op R drukt dan maakt hij nu een afbeelding en sluit het programma af. Met de GPU acceleratie is dat niet meer nodig!
+
+[ 20:53-01:08 (duur: 3 uur, 15 min.) ]
+Overzetten CPU code naar GPU. Camera rotatie toevoegen was ongelofelijk makkelijk omdat ik het al bij rasterization had!
+Er zit ergens een bug in mijn code en ik kan het maar niet vinden. 
+De raytracer rendert alleen een skybox en er zijn blijkbaar geen rayintersects terwijl met de image processing op de CPU die er wel zijn. 
+Er gaat denk ik iets mis met data overzetten naar GPU via buffers maar moet nog uitzoeken wat, misschien de overlap van Rasterizer en Raytracer.
+
+
+28-5-2026 
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:28-09:53 (duur: 1 uur, 25 min.) ]
+Eindelijk heb ik de bug gefixt. Blijkbaar zijn “int”s in Metal int32, en op swift niet, 
+dus door alles Int32 te maken op swift, wat verschrikkelijk was, zie ik eindelijk een beeld, al hoewel, 
+het is absoluut niet 60 fps, rond de 10-20 meer MAAR DAT IS GEWELDIG, alleen is de lighting calculatie nu er zegmaar niet dus de performance zal wat dalen nog. 
+Met simpele schaduw calculatie alleen al, vertraagt het programma met een factor van 2.
+
+[ 16:20-17:45 (duur: 1 uur, 25 min.) ]
+Paar kleine improvements. Raytracer maakt geen dithering errors meer door te kijken of de shadow raycast result hetzelfde is als het originele result 
+en als het hetzelfde is dan negeren.
+[ 22:20-23:30 (duur: 1 uur, 10 min.) ]
+Textures werken eindelijk ook voor de Raytracer. Vanaf nu kan ik eindelijk focussen puur op lighting calculations.
+
+<< TOTALE DUUR TOT NU TOE: 3017 minuten oftewel 50 uur en 17 minuten >>
+
+
+29-5-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 22:20 - (duur: ) ]
+Git repro maken, en logboek importeren en alvast wat mooier indelen
+
+
+wat kan misschien theoretisch beter: per tile ipv per pixels cast rays van de hoeken van de tile, 
+alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile
+
