@@ -33,7 +33,7 @@ public struct RayTraceTriangleGPU {
 
 public struct Material {
     public var ambientColor: simd_float3 = simd_float3(1, 1, 1)
-    public var ambientTextureIndex: Int32 = 0
+    public var ambientTextureIndex: Int32 = 0 // -1 = No Texture
     public var dissolve: Float = 1.0 // 1.0 = Opaque, 0.0 = Transparent
 }
 

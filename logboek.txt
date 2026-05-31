@@ -298,6 +298,17 @@ Textures werken eindelijk ook voor de Raytracer. Vanaf nu kan ik eindelijk focus
 Git repro maken, en logboek importeren en alvast wat mooier indelen
 
 
+30-5-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 14:20-15:19 (duur: 59 min.) ]
+GPU code meten en verbeteren door textures optioneel te maken in de materials. Ook raster renderer verbeteren.
+Maar nog zonder success. Hele Importer moet ik dan veranderen zodat vertices niet gedupliceerd staan in scene.vertices en
+alles moet indexed zijn. Veel rewriten. Waarschijnlijk ook de normals en uvs dan.
+
+
+
+
+
+
 wat kan misschien theoretisch beter: per tile ipv per pixels cast rays van de hoeken van de tile, 
 alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile
-

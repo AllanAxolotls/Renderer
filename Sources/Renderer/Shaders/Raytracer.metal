@@ -33,7 +33,7 @@ struct Face {
 
 struct Material {
     float3 ambientColor;
-    int ambientTextureIndex;
+    int ambientTextureIndex; // if -1 then no texture
     float dissolve;
 };
 
@@ -189,9 +189,6 @@ kernel void raytrace(
     sampler samp [[sampler(0)]],
     
     device Uniforms* uniforms [[buffer(0)]],
-    //device Vertex* vertices [[buffer(1)]],
-    //device Face* faces [[buffer(2)]],
-    //device SubMesh* subMeshes [[buffer(3)]],
     device Material* materials [[buffer(1)]],
     device BVHNode* bvhNodes [[buffer(2)]],
     device Face* leafFaces [[buffer(3)]],
@@ -225,8 +222,6 @@ kernel void raytrace(
         return;
     }
 
-    RaycastResult shadowResult = traverseBVH(result.hit + float3(0, 1000, 0), float3(0, -1.0, 0), uniforms->headNodeIndex, leafFaces, bvhNodes);
-    float darkness = (shadowResult.distance != INFINITY) * (shadowResult.leafFaceIndex != result.leafFaceIndex) * 0.3;
     Vertex vertex1 = result.hitFace.vertex1;
     Vertex vertex2 = result.hitFace.vertex2;
     Vertex vertex3 = result.hitFace.vertex3;
@@ -241,15 +236,23 @@ kernel void raytrace(
         result.barycentric.y * normal2 +
         result.barycentric.z * normal3
     );
-    float2 interpolatedUV = result.barycentric.x * uv1 + result.barycentric.y * uv2 + result.barycentric.z * uv3;
+    
     float angleIntensity = fmax(0, dot(lightAngle, interpolatedNormal)) * 0.75;
-    float lightIntensity = 1.25 - ((angleIntensity == 0) * darkness) - angleIntensity;
-    //float lightIntensity = (1 - (dot(lightAngle, interpolatedNormal) + 1) * 0.25) + 0.5 - darkness;
+    float lightIntensity = 1.25 - angleIntensity;
+    if (angleIntensity == 0) {
+        RaycastResult shadowResult = traverseBVH(result.hit + float3(0, 1000, 0), float3(0, -1.0, 0), uniforms->headNodeIndex, leafFaces, bvhNodes);
+        float darkness = (shadowResult.distance != INFINITY) * (shadowResult.leafFaceIndex != result.leafFaceIndex) * 0.3;
+        lightIntensity -= darkness;
+    }
     Material material = materials[result.hitFace.materialIndex];
+
+    if (material.ambientTextureIndex == -1) {
+        output.write(half4(half3(material.ambientColor * lightIntensity), 1.0), gid);
+        return;
+    }
+
     texture2d<float> tex = collection.textures[material.ambientTextureIndex];
+    float2 interpolatedUV = result.barycentric.x * uv1 + result.barycentric.y * uv2 + result.barycentric.z * uv3;
     half4 texColor = half4(tex.sample(samp, interpolatedUV));
     output.write(half4(texColor.xyz * lightIntensity, texColor.w), gid);
-    //output.write(half4(tex.read(gid)), gid);
-
-    //output.write(half4(half3(material.ambientColor) * lightIntensity, 1.0), gid);
 }
