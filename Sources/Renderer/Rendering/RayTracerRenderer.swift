@@ -104,6 +104,7 @@ private func raycastPixel(
 
         DispatchQueue.concurrentPerform(iterations: height) { pixelY in
 
+            let pixelYTimesWidthTimes4 = pixelY * width * 4
             for pixelX in 0..<width {
                 let color = raycastPixel(
                     pixelX: pixelX, pixelY: pixelY, scene: scene, 
@@ -111,7 +112,7 @@ private func raycastPixel(
                     camera: camera,
                     aspectRatio: aspectRatio, fovScale: fovScale 
                 )
-                let i: Int = (pixelY * width + pixelX) * 4
+                let i: Int = pixelYTimesWidthTimes4 + pixelX * 4
                 ptr[i]      = toByte(color.x)
                 ptr[i + 1]  = toByte(color.y)
                 ptr[i + 2]  = toByte(color.z)
@@ -186,16 +187,7 @@ final class RayTracerRenderer: Renderer {
         for face in scene.faces { facesToGPU.append(faceToGPU(face)) }
 
         uniformsBuffer = device.makeBuffer(bytes: &uniforms, length: MemoryLayout<Uniforms>.stride)
-        /*
-        scene.vertices.withUnsafeBufferPointer { ptr in
-            self.vertexBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<Vertex>.stride * scene.vertices.count)
-        }
-        facesToGPU.withUnsafeBufferPointer { ptr in
-            self.faceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<RayTraceTriangleGPU>.stride * facesToGPU.count)
-        }
-        scene.subMeshes.withUnsafeBufferPointer { ptr in
-            self.subMeshBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<SubMesh>.stride * scene.subMeshes.count)
-        }*/
+
         scene.materials.withUnsafeBufferPointer { ptr in 
             self.materialBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<Material>.stride * scene.materials.count)
         }
@@ -237,9 +229,6 @@ final class RayTracerRenderer: Renderer {
             memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.stride)
             
             encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
-            //encoder.setBuffer(vertexBuffer, offset: 0, index: 1)
-            //encoder.setBuffer(faceBuffer, offset: 0, index: 2)
-            //encoder.setBuffer(subMeshBuffer, offset: 0, index: 3)
             encoder.setBuffer(materialBuffer, offset: 0, index: 1)
             encoder.setBuffer(bvhNodeBuffer, offset: 0, index: 2)
             encoder.setBuffer(leafFaceBuffer, offset: 0, index: 3)

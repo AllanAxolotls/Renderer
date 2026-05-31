@@ -42,7 +42,7 @@ class ViewController: NSViewController, MTKViewDelegate {
     }
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         setScreenSize(newWidth: size.width, newHeight: size.height)
-        update_projection_matrix()
+        rasterRenderer.updateProjectionMatrix()
     }
 }
 

@@ -12,7 +12,6 @@ struct Main {
     static func main() {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
-        update_projection_matrix()
 
         let delegate = AppDelegate()
         app.delegate = delegate

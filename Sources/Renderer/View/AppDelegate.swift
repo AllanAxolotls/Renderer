@@ -1,15 +1,15 @@
 import Foundation
 import Cocoa
 
-@MainActor var screenWidth: CGFloat = 1920
-@MainActor var screenHeight: CGFloat = 1080
+@MainActor private var screenWidth: CGFloat = 1920
+@MainActor private var screenHeight: CGFloat = 1080
 
-@MainActor func setScreenSize(newWidth: CGFloat, newHeight: CGFloat) {
+@MainActor public func setScreenSize(newWidth: CGFloat, newHeight: CGFloat) {
     screenWidth = newWidth
     screenHeight = newHeight
 }
 
-@MainActor func getScreenSize() -> (width: CGFloat, height: CGFloat) {
+@MainActor public func getScreenSize() -> (width: CGFloat, height: CGFloat) {
     return (width: screenWidth, height: screenHeight)
 }
 
@@ -19,8 +19,7 @@ class WindowDelegate : NSObject, NSWindowDelegate {
     }
 }
 
-@MainActor
-class AppDelegate : NSObject, NSApplicationDelegate {
+@MainActor class AppDelegate : NSObject, NSApplicationDelegate {
     let window = NSWindow()
     let windowDelegate = WindowDelegate()
     var viewController: NSViewController?

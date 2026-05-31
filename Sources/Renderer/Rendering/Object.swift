@@ -1,7 +1,7 @@
 import simd
 import Metal
 
-struct Uniforms {
+public struct Uniforms {
     let fovScale: Float
     let headNodeIndex: Int32
     let cameraPosition: simd_float3
@@ -55,19 +55,6 @@ public struct MaterialGPU {
 }
 
 /*
-public struct Vertex {
-    var position: simd_float3
-    var uv: simd_float2?
-    var normal: simd_float3?
-}
-
-public struct VertexWithColor {
-    var position: simd_float3
-    var uv: simd_float2
-    var normal: simd_float3
-    var color: simd_float4
-}
-
 public class Material {
     var name: String
     var Ka: simd_float3 // Ambient Color

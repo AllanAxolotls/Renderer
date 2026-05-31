@@ -306,7 +306,10 @@ Maar nog zonder success. Hele Importer moet ik dan veranderen zodat vertices nie
 alles moet indexed zijn. Veel rewriten. Waarschijnlijk ook de normals en uvs dan.
 
 
-
+31-5-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:30- (duur: ) ]
+Code cleanup, Camera beetje veranderd
 
 
 

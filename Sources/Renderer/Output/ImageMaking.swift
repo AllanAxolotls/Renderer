@@ -2,7 +2,7 @@ import CoreGraphics
 import UniformTypeIdentifiers
 import ImageIO
 
-func createImage(width: Int, height: Int, pixelData: Data) -> CGImage? {
+public func createImage(width: Int, height: Int, pixelData: Data) -> CGImage? {
     let bitsPerComponent = 8
     let bitsPerPixel = 32
     let bytesPerRow = width * 4
@@ -28,7 +28,7 @@ func createImage(width: Int, height: Int, pixelData: Data) -> CGImage? {
     )
 }
 
-func saveImageToDesktop(_ image: CGImage) {
+public func saveImageToDesktop(_ image: CGImage) {
     let fileManager = FileManager.default
     
     guard let desktopURL = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first else {
