@@ -314,7 +314,7 @@ Code cleanup, Camera beetje veranderd
 
 12-6-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
-[ 11:24- (duur: ) ]
+[ 11:24-13:34 (duur: 2 uur, 10 min.) ]
 Doel: Licht kleur berekenen, random kanten rays op schieten om een gemiddelde licht calculatie te krijgen.
 TODO: (Raytracing)
 * (Klaar) Fix normal calculatie in Importer wanneer VertexNormals miss
