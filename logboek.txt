@@ -315,7 +315,6 @@ Code cleanup, Camera beetje veranderd
 12-6-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
 [ 11:24-13:34 (duur: 2 uur, 10 min.) ]
-Doel: Licht kleur berekenen, random kanten rays op schieten om een gemiddelde licht calculatie te krijgen.
 TODO: (Raytracing)
 * (Klaar) Fix normal calculatie in Importer wanneer VertexNormals miss
 * (Klaar) Bij transparent textures op triangles -> Alpha blending toevoegen 
@@ -323,6 +322,16 @@ TODO: (Raytracing)
 Ik ben er achter gekomen dat .mtl files een "map_d" gebruiken, wat best cool is want je kan dus aparte mask images hebben die cutouts maken door middel van de
 Alpha waarde. Voor nu houd ik het alleen bij map_Ka
 
+[ 19:00-19:05 (duur: 5 min.) ]
+Doel: Licht kleur berekenen, random kanten rays op schieten om een gemiddelde licht calculatie te krijgen.
+Hier mijn hypothese:
+Stap 1: Hoe werkt de licht calculatie eigenlijk? {
+    Simpelste versie: een "Path Tracer"
+    Backtrack naar een lichtpunt via reflecties
+    waarbij de reflecties worden gecalculeerd afhankelijk van de roughness van het materiaal
+    hoe meer rough, hoe meer random en diverged de licht stralen gaan, dus minder een spiegel.
+    Blend op een manier de licht kleur en de materiaal kleuren samen zoals hoe het in het echt werkt.
+}
 
 
 wat kan misschien theoretisch beter: per tile ipv per pixels cast rays van de hoeken van de tile, 

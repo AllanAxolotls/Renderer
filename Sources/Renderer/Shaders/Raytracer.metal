@@ -244,6 +244,7 @@ kernel void raytrace(
         float darkness = (shadowResult.distance != INFINITY) * (shadowResult.leafFaceIndex != result.leafFaceIndex) * 0.3;
         lightIntensity -= darkness;
     }
+    
     Material material = materials[result.hitFace.materialIndex];
 
     if (material.ambientTextureIndex == -1) {

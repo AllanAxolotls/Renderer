@@ -40,7 +40,6 @@ class GameView: MTKView {
         let screenSize = getScreenSize()
         rightJoystick.x += min(max(Float(event.deltaX) / Float(screenSize.width), -2), 2)
         rightJoystick.y += min(max(Float(event.deltaY) / Float(screenSize.height), -2), 2)
-        print(event.deltaX, event.deltaY)
         recenterMouse()
     }
 
