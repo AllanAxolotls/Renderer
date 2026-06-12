@@ -8,6 +8,7 @@ public struct Camera: @unchecked Sendable {
     public var up: simd_float3 { orientation.act(simd_float3(0,1,0)) }
     public var moveSpeed: Float = 40.0
     public var rotateSpeed: Float = 2.0
+    public var mouseSensivity: Float = 16.0
 
     mutating func rotate(yaw: Float, pitch: Float) {
         let yawQuat = simd_quatf(angle: yaw, axis: simd_float3(0,1,0))

@@ -4,6 +4,8 @@ import QuartzCore
 class GameView: MTKView {
     private var keysDown: Set<UInt16> = []
     private var lastUpdate = CACurrentMediaTime()
+    public var rightJoystick = simd_float2(0, 0)
+    private var ignoreNextMouseDelta = false
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -17,6 +19,38 @@ class GameView: MTKView {
 
     override func keyUp(with event: NSEvent) {
         keysDown.remove(event.keyCode)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        NSCursor.hide()
+        ignoreNextMouseDelta = true
+        recenterMouse()
+    }
+    
+    override func rightMouseUp(with event: NSEvent) {
+        NSCursor.unhide()
+    }
+
+    override func rightMouseDragged(with event: NSEvent) {
+        if ignoreNextMouseDelta {
+            ignoreNextMouseDelta = false
+            return
+        }
+
+        let screenSize = getScreenSize()
+        rightJoystick.x += min(max(Float(event.deltaX) / Float(screenSize.width), -2), 2)
+        rightJoystick.y += min(max(Float(event.deltaY) / Float(screenSize.height), -2), 2)
+        print(event.deltaX, event.deltaY)
+        recenterMouse()
+    }
+
+    public func recenterMouse() {
+        if let window = self.window {
+            let centerPointInView = NSPoint(x: self.bounds.midX, y: self.bounds.midY)
+            let centerPointInWindow = self.convert(centerPointInView, to: nil)
+            let centerPointInScreen = window.convertPoint(toScreen: centerPointInWindow)
+            CGWarpMouseCursorPosition(centerPointInScreen)
+        }
     }
 
     public func updateControls(camera: inout Camera) {
@@ -43,6 +77,10 @@ class GameView: MTKView {
         if self.keysDown.contains(126) { camera.rotate(yaw: 0, pitch: -rotSpeed) } // Up
         if self.keysDown.contains(125) { camera.rotate(yaw: 0, pitch: rotSpeed) } // Down
 
-        
+        let mouseYaw = min(max(rightJoystick.x * camera.mouseSensivity, -100), 100)
+        let mousePitch = min(max(rightJoystick.y * camera.mouseSensivity, -100), 100)
+        camera.rotate(yaw: mouseYaw, pitch: 0)
+        camera.rotate(yaw: 0, pitch: mousePitch)
+        rightJoystick.x = 0; rightJoystick.y = 0
     }
 }

@@ -344,9 +344,10 @@ public class ObjectImporter {
                     let uv1 = attributeCount >= 2 ? vertexUVs[Int(vertexAttributes1[1])! - 1] : simd_float2(0, 0)
                     let uv2 = attributeCount >= 2 ? vertexUVs[Int(vertexAttributes2[1])! - 1] : simd_float2(0, 1)
                     let uv3 = attributeCount >= 2 ? vertexUVs[Int(vertexAttributes3[1])! - 1] : simd_float2(1, 0)
-                    let normal1 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes1[2])! - 1] : simd_float3(0, 1, 0)
-                    let normal2 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes2[2])! - 1] : simd_float3(0, 1, 0)
-                    let normal3 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes3[2])! - 1] : simd_float3(0, 1, 0)
+                    let triangleNormal = attributeCount < 3 ? simd_normalize(simd_cross(position2 - position1, position3 - position1)) : nil
+                    let normal1 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes1[2])! - 1] : triangleNormal!
+                    let normal2 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes2[2])! - 1] : triangleNormal!
+                    let normal3 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes3[2])! - 1] : triangleNormal!
                     let vertex1 = Vertex(position: position1, uv: uv1, normal: normal1)
                     let vertex2 = Vertex(position: position2, uv: uv2, normal: normal2)
                     let vertex3 = Vertex(position: position3, uv: uv3, normal: normal3)

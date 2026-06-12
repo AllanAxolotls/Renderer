@@ -92,6 +92,7 @@ import MetalKit
         encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         encoder.setVertexBuffer(matrixBuffer, offset: 0, index: 1)
         encoder.setCullMode(MTLCullMode.back)
+        encoder.setFrontFacing(MTLWinding.clockwise)
 
         func drawSubMesh(subMesh: SubMesh) {
             let indexedMaterial = scene.materials[Int(subMesh.materialIndex)]

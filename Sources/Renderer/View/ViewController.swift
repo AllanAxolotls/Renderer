@@ -1,6 +1,7 @@
 import Metal
 import MetalKit
 import QuartzCore
+import GameController
 
 class ViewController: NSViewController, MTKViewDelegate {
     private var device: MTLDevice!

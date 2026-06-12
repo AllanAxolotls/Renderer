@@ -312,6 +312,18 @@ alles moet indexed zijn. Veel rewriten. Waarschijnlijk ook de normals en uvs dan
 Code cleanup, Camera beetje veranderd
 
 
+12-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:24- (duur: ) ]
+Doel: Licht kleur berekenen, random kanten rays op schieten om een gemiddelde licht calculatie te krijgen.
+TODO: (Raytracing)
+* (Klaar) Fix normal calculatie in Importer wanneer VertexNormals miss
+* (Klaar) Bij transparent textures op triangles -> Alpha blending toevoegen 
+* (Klaar, beetje buggy soms) Muis controls toevoegen
+Ik ben er achter gekomen dat .mtl files een "map_d" gebruiken, wat best cool is want je kan dus aparte mask images hebben die cutouts maken door middel van de
+Alpha waarde. Voor nu houd ik het alleen bij map_Ka
+
+
 
 wat kan misschien theoretisch beter: per tile ipv per pixels cast rays van de hoeken van de tile, 
 alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile

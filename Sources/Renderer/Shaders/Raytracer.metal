@@ -254,5 +254,6 @@ kernel void raytrace(
     texture2d<float> tex = collection.textures[material.ambientTextureIndex];
     float2 interpolatedUV = result.barycentric.x * uv1 + result.barycentric.y * uv2 + result.barycentric.z * uv3;
     half4 texColor = half4(tex.sample(samp, interpolatedUV));
-    output.write(half4(texColor.xyz * lightIntensity, texColor.w), gid);
+    half3 alphaBlendedColor = texColor.xyz * texColor.w + half3(material.ambientColor.xyz) * (1.0 - texColor.w);
+    output.write(half4(alphaBlendedColor * lightIntensity, 1.0), gid);
 }
