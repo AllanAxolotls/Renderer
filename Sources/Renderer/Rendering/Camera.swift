@@ -1,6 +1,6 @@
 import simd
 
-public struct Camera {
+public struct Camera: @unchecked Sendable {
     public var position = simd_float3(0, 0, 0)
     public var orientation = simd_quatf(angle: 0, axis: simd_float3(0,1,0))
     public var forward: simd_float3 { orientation.act(simd_float3(0,0,1)) }

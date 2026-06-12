@@ -308,7 +308,7 @@ alles moet indexed zijn. Veel rewriten. Waarschijnlijk ook de normals en uvs dan
 
 31-5-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
-[ 11:30- (duur: ) ]
+[ 11:30-14:44 (duur: 1 uur, 14 min. ) ]
 Code cleanup, Camera beetje veranderd
 
 
