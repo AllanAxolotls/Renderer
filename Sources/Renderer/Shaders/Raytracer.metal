@@ -61,7 +61,7 @@ struct BVHNode {
 struct RaycastResult {
     float3 hit;
     Face hitFace;
-    //float3 normal;
+    float3 normal;
     int leafFaceIndex;
     float distance;
     float3 barycentric;
@@ -104,46 +104,36 @@ bool intersectsAABB(float3 origin, float3 invDirection, float3 min, float3 max) 
 RaycastResult intersectsFace(float3 origin, float3 direction, Face face) {
     // Backface Culling, keeps CCW-wound triangles
     float3 normal = face.normal;
-    if (dot(normal, direction) > 0) { return RaycastResult{
-        .distance = INFINITY,
-    }; }
+    if (dot(normal, direction) > 0) { return RaycastResult{ .distance = INFINITY, }; }
 
     float3 edge1 = face.edge1;
     float3 edge2 = face.edge2;
     float3 direction_cross_edge2 = cross(direction, edge2);
     float det = dot(edge1, direction_cross_edge2);
-    if (metal::abs(det) < epsilon) { return RaycastResult{
-        .distance = INFINITY,
-    }; }
+    if (metal::abs(det) < epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
     float inv_det = 1.0 / det;
     float3 vertex1 = face.vertex1.position;
     float3 s = origin - vertex1;
     float u = inv_det * dot(s, direction_cross_edge2);
-    if (u < -epsilon || u - 1 > epsilon) { return RaycastResult{
-        .distance = INFINITY,
-    }; }
+    if (u < -epsilon || u - 1 > epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
     float3 s_cross_edge1 = cross(s, edge1);
     float v = inv_det * dot(direction, s_cross_edge1);
-    if (v < -epsilon || u + v - 1 > epsilon) { return RaycastResult{
-        .distance = INFINITY,
-    }; }
+    if (v < -epsilon || u + v - 1 > epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
     float t = inv_det * dot(edge2, s_cross_edge1);
     if (t > epsilon) { // && t <= 1) { // if t > 1 then ray is longer than segment length
         return RaycastResult{
             .hit = origin + direction * t, 
             .hitFace = face,
-            //.normal = normal, 
+            .normal = normal, 
             .distance = t,
             .barycentric = float3(1.0-u-v, u, v)
         };
     }
 
-    return RaycastResult {
-        .distance = INFINITY
-    };
+    return RaycastResult { .distance = INFINITY };
 }
 
 RaycastResult traverseBVH(float3 origin, float3 look, int headNodeIndex, device Face* leafFaces, device BVHNode* bvhNodes) {
@@ -151,18 +141,14 @@ RaycastResult traverseBVH(float3 origin, float3 look, int headNodeIndex, device 
     int stackPtr = 0;
     stack[stackPtr++] = headNodeIndex;
 
-    RaycastResult closestResult = RaycastResult{
-        .distance = INFINITY, 
-    };
+    RaycastResult closestResult = RaycastResult{ .distance = INFINITY };
 
     float3 inverseLook = 1.0 / look;
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];
         BVHNode node = bvhNodes[nodeIndex];
 
-        if (!intersectsAABB(origin, inverseLook, node.boundsMin, node.boundsMax)) {
-            continue;
-        }
+        if (!intersectsAABB(origin, inverseLook, node.boundsMin, node.boundsMax)) { continue; }
 
         for (int i = node.faceOffset; i < node.faceCount + node.faceOffset; ++i) {
             Face face = leafFaces[i];
@@ -173,12 +159,8 @@ RaycastResult traverseBVH(float3 origin, float3 look, int headNodeIndex, device 
             }
         }
 
-        if (node.leftIndex != -1) {
-            stack[stackPtr++] = node.leftIndex;
-        }
-        if (node.rightIndex != -1) {
-            stack[stackPtr++] = node.rightIndex;
-        }
+        if (node.leftIndex != -1) { stack[stackPtr++] = node.leftIndex; }
+        if (node.rightIndex != -1) { stack[stackPtr++] = node.rightIndex; }
     }
 
     return closestResult;

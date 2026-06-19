@@ -3,7 +3,8 @@ import ImageIO
 import UniformTypeIdentifiers
 
 let outputImageName = "output.png"
-let raytraceOnCPU: Bool = false
+let raytraceOnCPU: Bool = false // If true, the CPU does the raytracing of one frame and saves it as outputImageName, then exits the program immediately
+let saveAndExitOnGPU: Bool = true // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
 let printEveryRow: Bool = true
 
 private func toByte(_ x: Float) -> UInt8 {
@@ -206,8 +207,7 @@ final class RayTracerRenderer: Renderer {
         if raytraceOnCPU {
             calculateImage(scene: scene)
             exit(0)
-        } else {
-            // GPU ENTER CODE
+        } else { // GPU
             
             guard let drawable = view.currentDrawable else { return }
 
@@ -215,7 +215,20 @@ final class RayTracerRenderer: Renderer {
             let encoder = commandBuffer.makeComputeCommandEncoder()!
 
             encoder.setComputePipelineState(self.pipeline)
-            encoder.setTexture(drawable.texture, index: 0)
+            var outputTexture: MTLTexture? = nil
+            if saveAndExitOnGPU {
+                let desc = MTLTextureDescriptor.texture2DDescriptor(
+                    pixelFormat: .rgba8Unorm,
+                    width: drawable.texture.width,
+                    height: drawable.texture.height,
+                    mipmapped: false
+                )
+                desc.usage = [.shaderWrite, .shaderRead]
+                outputTexture = device.makeTexture(descriptor: desc)!
+                encoder.setTexture(outputTexture, index: 0)
+            } else {
+                encoder.setTexture(drawable.texture, index: 0)
+            }
             encoder.setSamplerState(self.pipelineBuilder.sampler, index: 0)
 
             var uniforms = Uniforms(
@@ -260,6 +273,40 @@ final class RayTracerRenderer: Renderer {
             encoder.endEncoding()
             commandBuffer.present(drawable)
             commandBuffer.commit()
+
+            if saveAndExitOnGPU {
+                commandBuffer.waitUntilCompleted()
+                guard let output = outputTexture else { return; }
+                let bytesPerPixel = 4
+                let bytesPerRow = output.width * bytesPerPixel
+
+                var pixels = [UInt8](
+                    repeating: 0,
+                    count: output.height * bytesPerRow
+                )
+
+                output.getBytes(
+                    &pixels,
+                    bytesPerRow: bytesPerRow,
+                    from: MTLRegionMake2D(
+                        0,
+                        0,
+                        output.width,
+                        output.height
+                    ),
+                    mipmapLevel: 0
+                )
+
+                let (cGWidth, cGHeight) = getScreenSize()
+                let width = Int(cGWidth)
+                let height = Int(cGHeight)
+                if let image = createImage(width: width, height: height, pixelData: Data(pixels)) {
+                    saveImageToDesktop(image)
+                } else {
+                    print("Failed to create image.")
+                }
+                exit(0)
+            }
         }
     }
 }

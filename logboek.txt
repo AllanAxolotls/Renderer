@@ -336,7 +336,7 @@ Stap 1: Hoe werkt de licht calculatie eigenlijk? {
 
 19-6-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
-[10:50-12:45 (duur: 1 uur, 55 min. ) ]
+[ 10:50-12:45 (duur: 1 uur, 55 min. ) ]
 .obj importer verbeteren
 Nieuwe bug gevonden waarbij in de Rasterizer Quads verkeerd worden gerenderd maar in de raytracer goed, zie "HartRenderBug" images
 Die bug wordt veroorzaakt door dat de Rasterizer geen Indexed Drawing gebruikt en dus de Vertices van de objects rauw als driehoek data leest
@@ -349,6 +349,9 @@ voor dat alles verkeerd rendert en dat driehoeken niet de correcte vormen krijge
 het verbruikt minder data en GPUs zijn er voor geoptimaliseerd dus de rasterizer is net iets sterker geworden. Daarnaast was het gemakkelijk
 te implementeren omdat de SubMeshes al letterlijk een faceOffset en faceCount hadden die kunnen worden getransleerd naar indexBufferOffset en indexCount respectievelijk.
 
+[ 13:03-13:43 (duur: 40 min. ) ]
+Functie maken voor raytracer zodat de GPU een image kan opslaan en daarna direct het programma sluit zodat ik meerdere light bounces kan testen zonder dat de
+raytracer vast loopt door het aantal frames dat die probeert te renderen.
 
 wat kan misschien theoretisch beter: per tile ipv per pixels cast rays van de hoeken van de tile, 
 alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile

@@ -22,7 +22,7 @@ class WindowDelegate : NSObject, NSWindowDelegate {
 @MainActor class AppDelegate : NSObject, NSApplicationDelegate {
     let window = NSWindow()
     let windowDelegate = WindowDelegate()
-    var viewController: NSViewController?
+    public var viewController: NSViewController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         window.setContentSize(NSSize(width: screenWidth, height: screenHeight))

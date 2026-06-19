@@ -16,9 +16,10 @@ public class Scene: @unchecked Sendable {
     init(device: MTLDevice) {
         importer = ObjectImporter(device: device)
         materials.append(Material()) // Default Material
-        importObject(fileName: "RobloxWorld2.obj")
+        //importObject(fileName: "RobloxWorld2.obj")
         //importObject(fileName: "FriedChicken.obj")
-        importObject(fileName: "Heart.obj")
+        //importObject(fileName: "Heart.obj")
+        importObject(fileName: "SkyPavMap.obj")
     }
 
     public func initBVH() {
