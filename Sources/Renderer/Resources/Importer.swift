@@ -2,11 +2,8 @@ import Metal
 import MetalKit
 import Foundation
 
-// TODO: Make it so vertex normals are not [0, 1, 0] on default but calculated if missing
-
 // Settings
 private let useClockWiseTriangles: Bool = false
-private let bakedVertexShift = simd_float3(-100, -20, -250)
 private let importAtOrigin: Bool = true
 
 private final class FileResolver {
@@ -334,9 +331,59 @@ public class ObjectImporter {
                 case "vt": vertexUVs.append(simd_float2(Float(tokens[1])!, Float(tokens[2])!))
                 case "vn": vertexNormals.append(simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!))
                 case "f":
-                    let vertexAttributes1 = tokens[1].components(separatedBy: "/")
-                    let vertexAttributes2 = tokens[2].components(separatedBy: "/")
-                    let vertexAttributes3 = tokens[3].components(separatedBy: "/")
+                    let vertexAttributes1 = tokens.count >= 2 && !tokens[1].isEmpty ? tokens[1].components(separatedBy: "/") : nil
+                    let vertexAttributes2 = tokens.count >= 3 && !tokens[2].isEmpty ? tokens[2].components(separatedBy: "/") : nil
+                    let vertexAttributes3 = tokens.count >= 4 && !tokens[3].isEmpty ? tokens[3].components(separatedBy: "/") : nil
+                    let vertexAttributes4 = tokens.count >= 5 && !tokens[4].isEmpty ? tokens[4].components(separatedBy: "/") : nil
+
+                    var positions: [simd_float3?] = [nil, nil, nil, nil]
+                    var uvs: [simd_float2?] = [nil, nil, nil, nil]
+                    var normals: [simd_float3?] = [nil, nil, nil, nil]
+
+                    // f 0/0/0 (vertexAttr1) 0/0/0 (vertexAttr2) 0/0/0 (vertexAttr3)
+                    for (i, vertexAttributes) in [vertexAttributes1, vertexAttributes2, vertexAttributes3, vertexAttributes4].enumerated() {
+                        guard let vertexAttributes = vertexAttributes else { continue }
+                        let attributeCount = vertexAttributes.count
+                        // Check string length for these cases where uvs are ignored: f 1//2 ...
+                        let hasPosition: Bool = attributeCount > 0 && vertexAttributes[0].count > 0
+                        let hasUV: Bool = attributeCount > 1 && vertexAttributes[1].count > 0 
+                        let hasNormal: Bool = attributeCount > 2 && vertexAttributes[2].count > 0
+                        if hasPosition { positions[i] = vertexPositions[Int(vertexAttributes[0])! - 1] }
+                        if hasUV { uvs[i] = vertexUVs[Int(vertexAttributes[1])! - 1] }
+                        if hasNormal { normals[i] = vertexNormals[Int(vertexAttributes[2])! - 1] }
+                    }
+
+                    let baseIndex = UInt32(truncatingIfNeeded: vertices.count)
+                    let faceNormal: simd_float3 = simd_normalize(simd_cross(positions[1]! - positions[0]!, positions[2]! - positions[0]!))
+                    for (i, position) in positions.enumerated() {
+                        guard let position = position else { continue }
+                        vertices.append(Vertex(position: position, uv: uvs[i] ?? simd_float2(0, 0), normal: normals[i] ?? faceNormal))
+                        currentVertexCount += 1
+                    }
+
+                    func newTriangle() {
+                        faces.append(Face(
+                            vertexIndices: simd_uint3(baseIndex, baseIndex + (!useClockWiseTriangles ? 1 : 2), baseIndex + (!useClockWiseTriangles ? 2 : 1)), 
+                            subMeshIndex: currentSubMeshOffset
+                        ))
+                        currentFaceCount += 1
+                    }
+
+                    func newQuad() {
+                        faces.append(Face(
+                            vertexIndices: simd_uint3(baseIndex, baseIndex + (!useClockWiseTriangles ? 1 : 2), baseIndex + (!useClockWiseTriangles ? 2 : 1)), 
+                            subMeshIndex: currentSubMeshOffset
+                        ))
+                        faces.append(Face(
+                            vertexIndices: simd_uint3(baseIndex, baseIndex + (!useClockWiseTriangles ? 2 : 3), baseIndex + (!useClockWiseTriangles ? 3 : 2)), 
+                            subMeshIndex: currentSubMeshOffset
+                        ))
+                        currentFaceCount += 2
+                    }
+                    
+                    if vertexAttributes4 == nil { newTriangle() } else { newQuad() }
+
+                    /*
                     let attributeCount = vertexAttributes1.count
                     let position1 = vertexPositions[Int(vertexAttributes1[0])! - 1]
                     let position2 = vertexPositions[Int(vertexAttributes2[0])! - 1]
@@ -365,7 +412,7 @@ public class ObjectImporter {
                         let vertexAttributes4 = tokens[4].components(separatedBy: "/")
                         let position4 = vertexPositions[Int(vertexAttributes4[0])! - 1]
                         let uv4 = attributeCount >= 2 ? vertexUVs[Int(vertexAttributes4[1])! - 1] : simd_float2(1, 1)
-                        let normal4 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes4[2])! - 1] : simd_float3(0, 1, 0)
+                        let normal4 = attributeCount >= 3 ? vertexNormals[Int(vertexAttributes4[2])! - 1] : triangleNormal!
                         let vertex4 = Vertex(position: position4, uv: uv4, normal: normal4)
                         vertices.append(contentsOf: !useClockWiseTriangles ? [vertex1,vertex3,vertex4] : [vertex1,vertex4,vertex3])
                         faces.append(Face(
@@ -375,6 +422,7 @@ public class ObjectImporter {
                         currentVertexCount += 1
                         currentFaceCount += 1
                     }
+                    */
                 case "o": continue parseLine // Model
                 case "g":
                     pushSubMesh()

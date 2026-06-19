@@ -17,7 +17,7 @@ public class Scene: @unchecked Sendable {
         importer = ObjectImporter(device: device)
         materials.append(Material()) // Default Material
         importObject(fileName: "RobloxWorld2.obj")
-        importObject(fileName: "FriedChicken.obj")
+        //importObject(fileName: "FriedChicken.obj")
         importObject(fileName: "Heart.obj")
     }
 
@@ -41,7 +41,7 @@ public class Scene: @unchecked Sendable {
             }
         }
         for i in 0..<newFaces.count {
-            let count = Int32(truncatingIfNeeded: self.vertices.count)
+            let count = UInt32(truncatingIfNeeded: self.vertices.count)
             newFaces[i].vertexIndices.x += count
             newFaces[i].vertexIndices.y += count
             newFaces[i].vertexIndices.z += count

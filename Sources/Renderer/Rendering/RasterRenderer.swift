@@ -10,6 +10,7 @@ import MetalKit
     var opaqueSubMeshes: [SubMesh]
 
     var vertexBuffer: MTLBuffer!
+    var indexBuffer: MTLBuffer!
     var matrixBuffer: MTLBuffer!
 
     var opaqueDepthState: MTLDepthStencilState!
@@ -27,7 +28,9 @@ import MetalKit
             bytes: scene.vertices,
             length: MemoryLayout<Vertex>.stride * scene.vertices.count
         )
-
+        var indices: [UInt32] = []
+        for face in scene.faces { indices.append(contentsOf: [face.vertexIndices.x, face.vertexIndices.y, face.vertexIndices.z]) }
+        indexBuffer = device.makeBuffer(bytes: indices, length: MemoryLayout<UInt32>.stride * indices.count)
         matrixBuffer = device.makeBuffer(length: MemoryLayout<matrix_float4x4>.stride)
 
         // Depth state for opaque objects
@@ -61,10 +64,7 @@ import MetalKit
         ))
     }
 
-    func draw(
-        view: MTKView,
-        commandQueue: MTLCommandQueue,
-    ) {
+    func draw(view: MTKView, commandQueue: MTLCommandQueue) {
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let pass = view.currentRenderPassDescriptor,
               let drawable = view.currentDrawable else { return }
@@ -99,9 +99,11 @@ import MetalKit
             encoder.setFragmentTexture(scene.textures[Int(indexedMaterial.ambientTextureIndex)], index: 0)
             var material = MaterialGPU(dissolve: indexedMaterial.dissolve)
             encoder.setFragmentBytes(&material, length: MemoryLayout<MaterialGPU>.stride, index: 2)
-            //encoder.drawIndexedPrimitives(type: MTLPrimitiveType, indexType: MTLIndexType, indexBuffer: any MTLBuffer, indexBufferOffset: Int, indirectBuffer: any MTLBuffer, indirectBufferOffset: Int)
-            //encoder.drawIndexedPrimitives(type: .triangle, indexCount: Int(subMesh.vertexCount), indexType: .uint32, indexBuffer: vertexBuffer, indexBufferOffset: 0)
-            encoder.drawPrimitives(type: .triangle, vertexStart: Int(subMesh.vertexOffset), vertexCount: Int(subMesh.vertexCount))
+            let indexCount = 3 * Int(subMesh.faceCount)
+            let indexBufferOffset = 3 * Int(subMesh.faceOffset) * MemoryLayout<UInt32>.stride
+            encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: MTLIndexType.uint32, indexBuffer: indexBuffer, indexBufferOffset: indexBufferOffset)
+            // Unindexed old approach:
+            //encoder.drawPrimitives(type: .triangle, vertexStart: Int(subMesh.vertexOffset), vertexCount: Int(subMesh.vertexCount))
         }       
         
         encoder.setDepthStencilState(opaqueDepthState)

@@ -17,7 +17,7 @@ public struct Vertex {
 }
 
 public struct Face {
-    public var vertexIndices: simd_int3
+    public var vertexIndices: simd_uint3
     public var subMeshIndex: Int32
 }
 
