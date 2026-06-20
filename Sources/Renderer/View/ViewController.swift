@@ -41,8 +41,11 @@ class ViewController: NSViewController, MTKViewDelegate {
     }
     func draw(in view: MTKView) {
         switch renderMode {
-            case .Rasterizer: currentRenderer = rasterRenderer
-            case .Raytracer: currentRenderer = raytracerRenderer
+            case .Rasterizer: 
+                currentRenderer = rasterRenderer
+                raytracerRenderer.invalidateAccumulation()
+            case .Raytracer: 
+                currentRenderer = raytracerRenderer
         }
         gameView.updateControls(camera: &scene.camera)
         currentRenderer.draw(view: view, commandQueue: commandQueue)

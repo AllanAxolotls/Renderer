@@ -2,13 +2,19 @@
 using namespace metal;
 
 constant float epsilon = 1e-6;
-constant half3 horizonColor = half3(207.0/255.0, 219.0/255.0, 230.0/255.0);
-constant half3 zenithColor = half3(60.0/255.0, 138.0/255.0, 201.0/255.0);
-constant float3 lightAngle = float3(0, -1, 0);
+constant float3 horizonColor = float3(207.0/255.0, 219.0/255.0, 230.0/255.0);
+constant float3 zenithColor = float3(60.0/255.0, 138.0/255.0, 201.0/255.0);
+constant float skyIntensity = 4.0;
+constant float3 sunDirection = float3(0.0, 1.0, 0.0); // Note: the direction is inverted, technically it should be: -sunDirection
+constant float3 sunColor = float3(10.0, 9.5, 8.5) * 0.5;
+constant float sunIntensity = 256.0;
+//constant float3 lightAngle = float3(0, -1, 0);
+constant int maxLightBounces = 10;
 
 struct Uniforms {
-    float fovScale;
+    int sampleIndex; // Which light-pass it is
     int headNodeIndex;
+    float fovScale;
     float3 cameraPosition;
     float3 cameraForward;
     float3 cameraUp;
@@ -166,8 +172,38 @@ RaycastResult traverseBVH(float3 origin, float3 look, int headNodeIndex, device 
     return closestResult;
 }
 
+float3 cosineWeightedHemisphere(float3 normal, float2 rand) {
+    float phi = 2.0 * M_PI_F * rand.x;
+    float r = sqrt(rand.y);
+    float x = r * cos(phi);
+    float y = r * sin(phi);
+    float z = sqrt(1.0 - rand.y);
+    float3 up = abs(normal.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
+    float3 tangent = normalize(cross(up, normal));
+    float3 bitangent = cross(normal, tangent);
+    return normalize(tangent * x + bitangent * y + normal * z);
+}
+
+float hash(uint x) {
+    x ^= x >> 16;
+    x *= 0x7feb352d;
+    x ^= x >> 15;
+    x *= 0x846ca68b;
+    x ^= x >> 16;
+    return float(x) / 4294967295.0;
+}
+
+float random(float seed) {
+    return hash(seed);
+}
+
+float2 random2(float seed) {
+    return float2(hash(seed), hash(seed * 1.3247 + 13.37));
+}
+
 kernel void raytrace(
-    texture2d<half, access::write> output [[texture(0)]],
+    texture2d<half, access::write> output [[texture(0)]], // Display Output
+    texture2d<float, access::read_write> accumTexture [[texture(1)]], // Light passes
     sampler samp [[sampler(0)]],
     
     device Uniforms* uniforms [[buffer(0)]],
@@ -180,63 +216,86 @@ kernel void raytrace(
 ) {
     uint width = output.get_width();
     uint height = output.get_height();
+    if (gid.x >= width || gid.y >= height) return;
 
-    if (gid.x >= width || gid.y >= height)
-        return;
-
+    int sampleIndex = uniforms->sampleIndex;
     uint pixelX = gid.x;
     uint pixelY = gid.y;
-    float ndcX = ((float)pixelX + 0.5) / (float)width * 2.0 - 1.0;
-    float ndcY = 1.0 - (((float)pixelY + 0.5) / (float)height) * 2.0;
+
+    float seed = float(gid.x * 1973 + gid.y * 9277 + sampleIndex * 26699);
+    float2 randXY = random2(seed);
+    // Apply jitter: use 0.5 for the first frame, random offset for successive frames
+    float offsetX = (uniforms->sampleIndex == 0) ? 0.5 : randXY.x;
+    float offsetY = (uniforms->sampleIndex == 0) ? 0.5 : randXY.y;
+
+    float ndcX = ((float)pixelX + offsetX) / (float)width * 2.0 - 1.0;
+    float ndcY = 1.0 - (((float)pixelY + offsetY) / (float)height) * 2.0;
     float aspectRatio = (float)width / (float)height;
     float projectedX = ndcX * aspectRatio * uniforms->fovScale;
     float projectedY = ndcY * uniforms->fovScale;
     float3 look = normalize(uniforms->cameraForward + projectedX * uniforms->cameraRight + projectedY * uniforms->cameraUp);
 
-    // Raycast, Traverse BVH
-    RaycastResult result = traverseBVH(uniforms->cameraPosition, look, uniforms->headNodeIndex, leafFaces, bvhNodes);
+    float3 radiance = float3(0.0, 0.0, 0.0);
+    float3 throughput = float3(1.0, 1.0, 1.0);
+    float3 rayOrigin = uniforms->cameraPosition;
+    float3 rayDirection = look;
+    for (uint bounce = 0; bounce < maxLightBounces; bounce++) {
+        RaycastResult result = traverseBVH(rayOrigin, rayDirection, uniforms->headNodeIndex, leafFaces, bvhNodes);
+        if (result.distance == INFINITY) {
+            float t = 0.5 * (rayDirection.y + 1.0);
+            float3 skyColor = mix(horizonColor, zenithColor, t);
+            float sunAmount = pow(max(dot(rayDirection, sunDirection), 0.0), sunIntensity);
+            radiance += throughput * (skyColor * skyIntensity + sunColor * sunAmount);
+            break;
+        }
 
-    if (result.distance == INFINITY) {
-        float t = 0.5 * (look.y + 1.0);
-        half3 color3 = (1.0 - t) * horizonColor + t * zenithColor;
-        half4 color = half4(color3.xyz, 1.0);
-        output.write(color, gid);
-        return;
+        Material material = materials[result.hitFace.materialIndex];
+        float3 albedo;
+
+        if (material.ambientTextureIndex == -1) {
+            albedo = material.ambientColor.xyz;
+        } else {
+            texture2d<float> tex = collection.textures[material.ambientTextureIndex];
+            // Interpolated UV
+            float2 uv = result.barycentric.x * result.hitFace.vertex1.uv + result.barycentric.y * result.hitFace.vertex2.uv + result.barycentric.z * result.hitFace.vertex3.uv;
+            float4 texColor = tex.sample(samp, uv);
+            albedo = mix(material.ambientColor.xyz, texColor.xyz, texColor.w); // Alpha Blend Texture with Material Color
+        }
+
+        // Interpolated Normal
+        float3 normal = normalize(result.barycentric.x * result.hitFace.vertex1.normal + result.barycentric.y * result.hitFace.vertex2.normal + result.barycentric.z * result.hitFace.vertex3.normal);
+        float normalDotLight = max(dot(normal, sunDirection), 0.0);
+        if (normalDotLight > 0.0) {
+            RaycastResult shadowResult = traverseBVH(result.hit + normal * 0.01, sunDirection, uniforms->headNodeIndex, leafFaces, bvhNodes);
+            bool sunVisible = shadowResult.distance == INFINITY;
+            if (sunVisible) radiance += throughput * albedo * sunColor * normalDotLight;
+        }
+
+        // Russian Roulette
+        if (bounce > 3) { // This is for colors that are too dark and can be discarded, a nice optimisation basically
+            float p = max(throughput.r, max(throughput.g, throughput.b));
+            p = clamp(p, 0.05f, 0.95f);
+            if (random(seed + bounce * 991.74) > p) break;
+            throughput /= p;
+        }
+
+        throughput *= albedo;
+        seed += float(bounce) * 143.137; 
+        float2 bounceRand = random2(seed + float(bounce) * 12345.6789);
+        if (dot(normal, rayDirection) > 0.0) normal = -normal;
+        float3 bounceDirection = cosineWeightedHemisphere(normal, bounceRand);
+        rayOrigin = result.hit + normal * 0.01; // Add tiny bit of normal so that the next bounce doesn't intersect with the same face
+        rayDirection = bounceDirection;
     }
 
-    Vertex vertex1 = result.hitFace.vertex1;
-    Vertex vertex2 = result.hitFace.vertex2;
-    Vertex vertex3 = result.hitFace.vertex3;
-    float3 normal1 = vertex1.normal;
-    float3 normal2 = vertex2.normal;
-    float3 normal3 = vertex3.normal;
-    float2 uv1 = vertex1.uv;
-    float2 uv2 = vertex2.uv;
-    float2 uv3 = vertex3.uv;
-    float3 interpolatedNormal = normalize(
-        result.barycentric.x * normal1 +
-        result.barycentric.y * normal2 +
-        result.barycentric.z * normal3
-    );
-    
-    float angleIntensity = fmax(0, dot(lightAngle, interpolatedNormal)) * 0.75;
-    float lightIntensity = 1.25 - angleIntensity;
-    if (angleIntensity == 0) {
-        RaycastResult shadowResult = traverseBVH(result.hit + float3(0, 1000, 0), float3(0, -1.0, 0), uniforms->headNodeIndex, leafFaces, bvhNodes);
-        float darkness = (shadowResult.distance != INFINITY) * (shadowResult.leafFaceIndex != result.leafFaceIndex) * 0.3;
-        lightIntensity -= darkness;
-    }
-    
-    Material material = materials[result.hitFace.materialIndex];
-
-    if (material.ambientTextureIndex == -1) {
-        output.write(half4(half3(material.ambientColor * lightIntensity), 1.0), gid);
-        return;
+    float4 accumColor = float4(radiance.xyz, 1.0);
+    if (sampleIndex > 0) {
+        float4 prevColor = accumTexture.read(gid);
+        accumColor += prevColor;
     }
 
-    texture2d<float> tex = collection.textures[material.ambientTextureIndex];
-    float2 interpolatedUV = result.barycentric.x * uv1 + result.barycentric.y * uv2 + result.barycentric.z * uv3;
-    half4 texColor = half4(tex.sample(samp, interpolatedUV));
-    half3 alphaBlendedColor = texColor.xyz * texColor.w + half3(material.ambientColor.xyz) * (1.0 - texColor.w);
-    output.write(half4(alphaBlendedColor * lightIntensity, 1.0), gid);
+    accumTexture.write(accumColor, gid);
+    float3 averageColor = accumColor.xyz / float(sampleIndex + 1); // sampleIndex + 1 = sampleCount
+    float3 toneMappedColor = 1.0 - exp(-averageColor);
+    output.write(half4(half3(toneMappedColor.xyz), 1.0), gid);
 }

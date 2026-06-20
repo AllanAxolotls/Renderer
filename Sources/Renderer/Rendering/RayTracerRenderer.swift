@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 let outputImageName = "output.png"
 let raytraceOnCPU: Bool = false // If true, the CPU does the raytracing of one frame and saves it as outputImageName, then exits the program immediately
 let saveAndExitOnGPU: Bool = false // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
+let maxSamples: Int32 = 100
 let printCPUProgressEveryRow: Bool = true
 
 private func toByte(_ x: Float) -> UInt8 {
@@ -155,6 +156,14 @@ final class RayTracerRenderer: Renderer {
     var bvhNodeBuffer: MTLBuffer!
     var leafFaceBuffer: MTLBuffer!
 
+    var accumTexture: MTLTexture? = nil
+    var lastCameraPosition: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
+    var lastCameraForward: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
+    var lastCameraUp: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
+    var lastWidth: Int = -1 // drawable.texture.width
+    var lastHeight: Int = -1 // drawable.texture.height
+    var sampleIndex: Int32 = 0
+
     init (device: MTLDevice, scene: Scene) {
         self.device = device
         self.scene = scene
@@ -162,8 +171,9 @@ final class RayTracerRenderer: Renderer {
         (self.pipeline, argumentBuffer) = self.pipelineBuilder.makeRayTracePipeline(textures: scene.textures)
 
         var uniforms = Uniforms(
-            fovScale: tan(FOVRad * 0.5), 
+            sampleIndex: sampleIndex,
             headNodeIndex: scene.bvh!.headNodeIndex, 
+            fovScale: tan(FOVRad * 0.5), 
             cameraPosition: scene.camera.position,
             cameraForward: scene.camera.forward, 
             cameraUp: scene.camera.up,
@@ -200,76 +210,105 @@ final class RayTracerRenderer: Renderer {
         }
     }
 
-    func draw(
-        view: MTKView,
-        commandQueue: MTLCommandQueue,
-    ) {
-        if raytraceOnCPU { calculateImageCPU(scene: scene) } else { // GPU
-            guard let drawable = view.currentDrawable else { return }
+    func invalidateAccumulation() {
+        sampleIndex = 0
+        lastCameraPosition = simd_float3(repeating: .infinity)
+        lastCameraForward = simd_float3(repeating: .infinity)
+        lastCameraUp = simd_float3(repeating: .infinity)
+    }
 
-            let commandBuffer = commandQueue.makeCommandBuffer()!
-            let encoder = commandBuffer.makeComputeCommandEncoder()!
-            encoder.setComputePipelineState(self.pipeline)
-
-            var outputTexture: MTLTexture? = nil
-            if saveAndExitOnGPU {
-                let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: drawable.texture.width, height: drawable.texture.height, mipmapped: false)
-                desc.usage = [.shaderWrite, .shaderRead]
-                outputTexture = device.makeTexture(descriptor: desc)!
-                encoder.setTexture(outputTexture, index: 0)
-            } else {
-                encoder.setTexture(drawable.texture, index: 0)
-            }
-            encoder.setSamplerState(self.pipelineBuilder.sampler, index: 0)
-
-            var uniforms = Uniforms(
-                fovScale: tan(FOVRad * 0.5), 
-                headNodeIndex: scene.bvh!.headNodeIndex, 
-                cameraPosition: scene.camera.position,
-                cameraForward: scene.camera.forward, 
-                cameraUp: scene.camera.up,
-                cameraRight: scene.camera.right
-            )
-            memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.stride)
-            
-            encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
-            encoder.setBuffer(materialBuffer, offset: 0, index: 1)
-            encoder.setBuffer(bvhNodeBuffer, offset: 0, index: 2)
-            encoder.setBuffer(leafFaceBuffer, offset: 0, index: 3)
-            encoder.setBuffer(argumentBuffer, offset: 0, index: 4)
-            for texture in scene.textures {
-                encoder.useResource(texture, usage: .sample)
-            }
-
-            let width = pipeline.threadExecutionWidth
-            let height = pipeline.maxTotalThreadsPerThreadgroup / width
-
-            let threadsPerThreadgroup = MTLSize(width: width, height: height, depth: 1)
-            let threadsPerGrid = MTLSize(width: drawable.texture.width, height: drawable.texture.height, depth: 1)
-            encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-
-            encoder.endEncoding()
-            commandBuffer.present(drawable)
-            commandBuffer.commit()
-
-            if saveAndExitOnGPU {
-                commandBuffer.waitUntilCompleted()
-                guard let output = outputTexture else { return; }
-                let bytesPerPixel = 4
-                let bytesPerRow = output.width * bytesPerPixel
-
-                var pixels = [UInt8](repeating: 0, count: output.height * bytesPerRow)
-                output.getBytes(&pixels, bytesPerRow: bytesPerRow, from: MTLRegionMake2D(0, 0, output.width, output.height), mipmapLevel: 0)
-
-                let (cGWidth, cGHeight) = getScreenSize()
-                let width = Int(cGWidth)
-                let height = Int(cGHeight)
-                if let image = createImage(width: width, height: height, pixelData: Data(pixels)) {
-                    saveImageToDesktop(image)
-                } else {
-                    print("Failed to create image.")
+    func draw(view: MTKView, commandQueue: MTLCommandQueue) {
+        autoreleasepool {
+            if raytraceOnCPU { calculateImageCPU(scene: scene) } else { // GPU
+                guard let drawable = view.currentDrawable else { return }
+                
+                //TODO: In the future 'sceneChanged' will be required aswell
+                func posNearlyEq(_ a: simd_float3, _ b: simd_float3) -> Bool { return simd_length(a - b) < 0.001 }
+                var cameraChanged: Bool = false
+                if !posNearlyEq(scene.camera.position, lastCameraPosition) || !posNearlyEq(scene.camera.forward, lastCameraForward) || !posNearlyEq(scene.camera.up, lastCameraUp) {
+                    lastCameraPosition = scene.camera.position
+                    lastCameraForward = scene.camera.forward
+                    lastCameraUp = scene.camera.up
+                    cameraChanged = true
+                    print("Camera Moved, Sample Invalidated")
                 }
-                exit(0)
+                let windowResolutionChanged = lastWidth != drawable.texture.width || lastHeight != drawable.texture.height 
+                if windowResolutionChanged {
+                    lastWidth = drawable.texture.width
+                    lastHeight = drawable.texture.height
+                    print("Window Resized, Sample Invalidated")
+                }
+
+                sampleIndex = (cameraChanged || windowResolutionChanged) ? 0 : sampleIndex + 1
+                if sampleIndex == 0 {
+                    let accumTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: drawable.texture.width, height: drawable.texture.height, mipmapped: false)
+                    accumTextureDesc.usage = [.shaderWrite, .shaderRead]
+                    accumTexture = device.makeTexture(descriptor: accumTextureDesc)
+                }     
+                if sampleIndex >= maxSamples { // Camera did not move and max samples reached so stop new GPU processing
+                    return
+                } else {
+                    print("Sampling Index: \(sampleIndex)")
+                }
+
+                // The Render Commands
+                let commandBuffer = commandQueue.makeCommandBuffer()!
+                let encoder = commandBuffer.makeComputeCommandEncoder()!
+
+                var uniforms = Uniforms(
+                    sampleIndex: sampleIndex,
+                    headNodeIndex: scene.bvh!.headNodeIndex,
+                    fovScale: tan(FOVRad * 0.5), 
+                    cameraPosition: scene.camera.position,
+                    cameraForward: scene.camera.forward, 
+                    cameraUp: scene.camera.up,
+                    cameraRight: scene.camera.right
+                )
+                memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.stride)
+
+                encoder.setComputePipelineState(self.pipeline)
+                encoder.setTexture(drawable.texture, index: 0)
+                encoder.setTexture(accumTexture, index: 1)
+                encoder.setSamplerState(self.pipelineBuilder.sampler, index: 0)
+                
+                encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
+                encoder.setBuffer(materialBuffer, offset: 0, index: 1)
+                encoder.setBuffer(bvhNodeBuffer, offset: 0, index: 2)
+                encoder.setBuffer(leafFaceBuffer, offset: 0, index: 3)
+                encoder.setBuffer(argumentBuffer, offset: 0, index: 4)
+                for texture in scene.textures { encoder.useResource(texture, usage: .sample) }
+
+                let width = pipeline.threadExecutionWidth
+                let height = pipeline.maxTotalThreadsPerThreadgroup / width
+                let threadsPerThreadgroup = MTLSize(width: width, height: height, depth: 1)
+                let threadsPerGrid = MTLSize(width: drawable.texture.width, height: drawable.texture.height, depth: 1)
+                encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
+
+                encoder.endEncoding()
+                commandBuffer.present(drawable)
+                commandBuffer.commit()
+                commandBuffer.waitUntilCompleted()
+
+                // If save, save drawable texture as png to desktop when maxSamples reached and exit program
+                if saveAndExitOnGPU && sampleIndex >= maxSamples {
+                    commandBuffer.waitUntilCompleted()
+                    let output = drawable.texture
+                    let bytesPerPixel = 4
+                    let bytesPerRow = output.width * bytesPerPixel
+
+                    var pixels = [UInt8](repeating: 0, count: output.height * bytesPerRow)
+                    output.getBytes(&pixels, bytesPerRow: bytesPerRow, from: MTLRegionMake2D(0, 0, output.width, output.height), mipmapLevel: 0)
+
+                    let (cGWidth, cGHeight) = getScreenSize()
+                    let width = Int(cGWidth)
+                    let height = Int(cGHeight)
+                    if let image = createImage(width: width, height: height, pixelData: Data(pixels)) {
+                        saveImageToDesktop(image)
+                    } else {
+                        print("Failed to create image.")
+                    }
+                    exit(0)
+                }
             }
         }
     }

@@ -38,8 +38,8 @@ class WindowDelegate : NSObject, NSWindowDelegate {
 
         let device = MTLCreateSystemDefaultDevice()!
         importer = ObjectImporter(device: device)
-        //scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
-        scene.addAsset(importer.importObject(filePath: "Assets/RobloxWorld2/RobloxWorld2.obj"))
+        scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
+        //scene.addAsset(importer.importObject(filePath: "Assets/RobloxWorld2/RobloxWorld2.obj"))
         scene.rebuildBVH() // Mandatory
 
         let view = window.contentView!

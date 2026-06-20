@@ -356,15 +356,40 @@ raytracer vast loopt door het aantal frames dat die probeert te renderen.
 
 20-6-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
-[ 11:32-14:07 (duur: ) ]
+[ 11:32-14:07 (duur: 2 uur, 35 min. ) ]
 Ik probeer de code architectuur te veranderen zodat de Scene class niet helemaal in de ViewController verstopt zit, alleen alles is iets te afhankelijk van elkaar op dit
 moment omdat ze allemaal een MTLDevice moeten delen die pas gemaakt wordt in de ViewController. Het is een flinke puzzel dus.
 Nieuwe Versnel en Vertraag camera speed knoppen: '=' (Versnel) en '-' (Vertraag)
 Object Importer is nogal veranderd qua files zoeken. 
 Assets iets beter georganiseerd.
 
+[ 14:36-17:20 (duur: 2 uur, 44 min. ) ]
+Bedenken hoe ik de Raytracer kan veranderen van single-pass naar multi-pass waarbij elke draw frame niet alle licht bounces worden gecalculeerd, maar in plaats
+daar van geaccumuleerd om computing te verspreiden over meerdere frames. Programma's zoals Blender doen dit. Daarnaast moet ik
+uberhaupt licht bounces gaan berekenen. Dit wordt gedaan door een random reflectie richting te kiezen voor matte objecten en dan door te raycasten totdat een max
+bounce limiet is bereikt. Van alle passes wordt dan het gemiddelde genomen en dat levert het eind resultaat
+Ik kom er maar niet uit waarom de sampleIndex is ge-desynched met de CPU uniforms struct
+wat er voor zorgt dat verkeerde frames met elkaar blenden. Het is een nachtmerrie
+Soms worden sommigen tiles ook donkerder gerendered dan de rest. Ik denk dat
+er een race-condition is voor de Uniforms struct. Ik denk ook dat er iets mis is met de
+calculatie voor het gemiddelde van de light-passes 
+
+[ 23:20-01:48 (duur: 2 uur, 28 min. ) ]
+Ik ga proberen de bug te fixen. Het is inderdaad een race-condition;
+als ik commandEncoder.waitUntilCompleted() toevoeg dan wacht de CPU totdat
+de GPU frame klaar is en in dat geval zijn er geen visual glitches.
+Door .waitUntilCompleted() zijn de lagspikes ook meer verspreid dan zonder 
+!Bug: bij heel erg slechte performance stopt Sampling Index gewoon met omhoog gaan?
+Accumulation texture verbeterd. 
+Echte light bounces nu ook door middel van radiance en throughput
+een simpele zon toegevoegd
+"Russian Roulette" techniek toegevoegd
+!Bug: ook na lang raytracen en dan terug switchen, HEEL SOMS, dan wordt de rasterizer frame niet meer gecleared, ik weet niet of
+dat aan MIJN code ligt of aan Apple of omdat mijn laptop strugglet door de hitte. (nog maar 1 keer gebeurd)
 
 
-
-wat kan misschien theoretisch beter: per tile ipv per pixels cast rays van de hoeken van de tile, 
-alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile
+Notes voor mezelf:
+wat kan misschien theoretisch beter: 
+* per tile ipv per pixels cast rays van de hoeken van de tile,  alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile
+* bij per frame raytracing, laat de GPU slapen als er geen camera movement is en er geen andere dingen gebueren
+* Check of de BHV traverse diepte niet groter is dan 64 anders gaat er iets fout in de shader code, en check of 64 een groot genoeg getal is of zelfs te groot

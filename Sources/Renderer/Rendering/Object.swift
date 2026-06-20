@@ -2,8 +2,9 @@ import simd
 import Metal
 
 public struct Uniforms {
-    let fovScale: Float
+    let sampleIndex: Int32
     let headNodeIndex: Int32
+    let fovScale: Float
     let cameraPosition: simd_float3
     let cameraForward: simd_float3
     let cameraUp: simd_float3
