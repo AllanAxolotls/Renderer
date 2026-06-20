@@ -353,5 +353,18 @@ te implementeren omdat de SubMeshes al letterlijk een faceOffset en faceCount ha
 Functie maken voor raytracer zodat de GPU een image kan opslaan en daarna direct het programma sluit zodat ik meerdere light bounces kan testen zonder dat de
 raytracer vast loopt door het aantal frames dat die probeert te renderen.
 
+
+20-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:32-14:07 (duur: ) ]
+Ik probeer de code architectuur te veranderen zodat de Scene class niet helemaal in de ViewController verstopt zit, alleen alles is iets te afhankelijk van elkaar op dit
+moment omdat ze allemaal een MTLDevice moeten delen die pas gemaakt wordt in de ViewController. Het is een flinke puzzel dus.
+Nieuwe Versnel en Vertraag camera speed knoppen: '=' (Versnel) en '-' (Vertraag)
+Object Importer is nogal veranderd qua files zoeken. 
+Assets iets beter georganiseerd.
+
+
+
+
 wat kan misschien theoretisch beter: per tile ipv per pixels cast rays van de hoeken van de tile, 
 alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile

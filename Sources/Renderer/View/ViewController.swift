@@ -4,7 +4,7 @@ import QuartzCore
 import GameController
 
 class ViewController: NSViewController, MTKViewDelegate {
-    private var device: MTLDevice!
+    let device: MTLDevice!
     public var gameView: GameView!
     public var commandQueue: MTLCommandQueue!
 
@@ -13,11 +13,17 @@ class ViewController: NSViewController, MTKViewDelegate {
     public var rasterRenderer: RasterRenderer!
     public var raytracerRenderer: RayTracerRenderer!
 
+    init(device: MTLDevice, scene: Scene) {
+        self.device = device
+        self.scene = scene
+        super.init(nibName: nil, bundle: nil)
+    }
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override func loadView() {
-        device = MTLCreateSystemDefaultDevice()!
         commandQueue = device.makeCommandQueue()
-        scene = Scene(device: device)
-        scene.initBVH()
 
         currentRenderer = rasterRenderer
         rasterRenderer = RasterRenderer(device: device, scene: scene)

@@ -4,8 +4,8 @@ import UniformTypeIdentifiers
 
 let outputImageName = "output.png"
 let raytraceOnCPU: Bool = false // If true, the CPU does the raytracing of one frame and saves it as outputImageName, then exits the program immediately
-let saveAndExitOnGPU: Bool = true // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
-let printEveryRow: Bool = true
+let saveAndExitOnGPU: Bool = false // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
+let printCPUProgressEveryRow: Bool = true
 
 private func toByte(_ x: Float) -> UInt8 {
     let safe = x.isNaN || x.isInfinite ? 0 : x
@@ -104,7 +104,6 @@ private func raycastPixel(
         let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress!
 
         DispatchQueue.concurrentPerform(iterations: height) { pixelY in
-
             let pixelYTimesWidthTimes4 = pixelY * width * 4
             for pixelX in 0..<width {
                 let color = raycastPixel(
@@ -120,14 +119,14 @@ private func raycastPixel(
                 ptr[i + 3]  = toByte(color.w)
             }
 
-            if printEveryRow { print("Row \(pixelY + 1) complete") }
+            if printCPUProgressEveryRow { print("Row \(pixelY + 1) complete") }
         }
     }
 
     return Data(pixels)
 }
 
-@MainActor private func calculateImage(scene: Scene) {
+@MainActor private func calculateImageCPU(scene: Scene) {
     let (cGWidth, cGHeight) = getScreenSize()
     let width = Int(cGWidth)
     let height = Int(cGHeight)
@@ -137,6 +136,7 @@ private func raycastPixel(
     } else {
         print("Failed to create image.")
     }
+    exit(0)
 }
 
 final class RayTracerRenderer: Renderer {
@@ -204,25 +204,16 @@ final class RayTracerRenderer: Renderer {
         view: MTKView,
         commandQueue: MTLCommandQueue,
     ) {
-        if raytraceOnCPU {
-            calculateImage(scene: scene)
-            exit(0)
-        } else { // GPU
-            
+        if raytraceOnCPU { calculateImageCPU(scene: scene) } else { // GPU
             guard let drawable = view.currentDrawable else { return }
 
             let commandBuffer = commandQueue.makeCommandBuffer()!
             let encoder = commandBuffer.makeComputeCommandEncoder()!
-
             encoder.setComputePipelineState(self.pipeline)
+
             var outputTexture: MTLTexture? = nil
             if saveAndExitOnGPU {
-                let desc = MTLTextureDescriptor.texture2DDescriptor(
-                    pixelFormat: .rgba8Unorm,
-                    width: drawable.texture.width,
-                    height: drawable.texture.height,
-                    mipmapped: false
-                )
+                let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: drawable.texture.width, height: drawable.texture.height, mipmapped: false)
                 desc.usage = [.shaderWrite, .shaderRead]
                 outputTexture = device.makeTexture(descriptor: desc)!
                 encoder.setTexture(outputTexture, index: 0)
@@ -253,22 +244,9 @@ final class RayTracerRenderer: Renderer {
             let width = pipeline.threadExecutionWidth
             let height = pipeline.maxTotalThreadsPerThreadgroup / width
 
-            let threadsPerThreadgroup = MTLSize(
-                width: width,
-                height: height,
-                depth: 1
-            )
-
-            let threadsPerGrid = MTLSize(
-                width: drawable.texture.width,
-                height: drawable.texture.height,
-                depth: 1
-            )
-
-            encoder.dispatchThreads(
-                threadsPerGrid,
-                threadsPerThreadgroup: threadsPerThreadgroup
-            )
+            let threadsPerThreadgroup = MTLSize(width: width, height: height, depth: 1)
+            let threadsPerGrid = MTLSize(width: drawable.texture.width, height: drawable.texture.height, depth: 1)
+            encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
 
             encoder.endEncoding()
             commandBuffer.present(drawable)
@@ -280,22 +258,8 @@ final class RayTracerRenderer: Renderer {
                 let bytesPerPixel = 4
                 let bytesPerRow = output.width * bytesPerPixel
 
-                var pixels = [UInt8](
-                    repeating: 0,
-                    count: output.height * bytesPerRow
-                )
-
-                output.getBytes(
-                    &pixels,
-                    bytesPerRow: bytesPerRow,
-                    from: MTLRegionMake2D(
-                        0,
-                        0,
-                        output.width,
-                        output.height
-                    ),
-                    mipmapLevel: 0
-                )
+                var pixels = [UInt8](repeating: 0, count: output.height * bytesPerRow)
+                output.getBytes(&pixels, bytesPerRow: bytesPerRow, from: MTLRegionMake2D(0, 0, output.width, output.height), mipmapLevel: 0)
 
                 let (cGWidth, cGHeight) = getScreenSize()
                 let width = Int(cGWidth)

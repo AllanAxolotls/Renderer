@@ -32,6 +32,7 @@ final class BVH {
 
     init(scene: Scene) {
         self.scene = scene
+        self.build()
     }
 
     private func computeBounds(faces: [RayTraceTriangleGPU]) -> (min: simd_float3, max: simd_float3) {

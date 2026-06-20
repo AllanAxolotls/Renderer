@@ -4,5 +4,5 @@ Gebruik het door de command:
 make run
 
 Controls:
-WASD, Q: OMHOOG, E: OMLAAG
+WASD, E: OMHOOG, Q: OMLAAG
 R: Switch tussen Raytracing en Rasterizing

@@ -22,19 +22,28 @@ class WindowDelegate : NSObject, NSWindowDelegate {
 @MainActor class AppDelegate : NSObject, NSApplicationDelegate {
     let window = NSWindow()
     let windowDelegate = WindowDelegate()
-    public var viewController: NSViewController?
+    public var viewController: ViewController?
+
+    public var scene = Scene()
+    public var importer: ObjectImporter!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         window.setContentSize(NSSize(width: screenWidth, height: screenHeight))
         window.styleMask = [ .titled, .closable, .miniaturizable, .resizable ]
-        window.title = "Metal Triangles"
+        window.title = "[ Rasterizer - Raytracer ]"
     
         window.level = .normal
         window.delegate = windowDelegate
         window.center()
 
+        let device = MTLCreateSystemDefaultDevice()!
+        importer = ObjectImporter(device: device)
+        //scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
+        scene.addAsset(importer.importObject(filePath: "Assets/RobloxWorld2/RobloxWorld2.obj"))
+        scene.rebuildBVH() // Mandatory
+
         let view = window.contentView!
-        viewController = ViewController(nibName: nil, bundle: nil)
+        viewController = ViewController(device: device, scene: scene)
         viewController!.view.frame = view.bounds
         viewController!.view.autoresizingMask = [.width, .height]
         window.contentViewController = viewController

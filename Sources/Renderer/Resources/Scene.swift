@@ -11,27 +11,16 @@ public class Scene: @unchecked Sendable {
     var camera: Camera = Camera()
     var bvh: BVH?
 
-    public let importer: ObjectImporter
-
-    init(device: MTLDevice) {
-        importer = ObjectImporter(device: device)
+    init() {
         materials.append(Material()) // Default Material
-        //importObject(fileName: "RobloxWorld2.obj")
-        //importObject(fileName: "FriedChicken.obj")
-        //importObject(fileName: "Heart.obj")
-        importObject(fileName: "SkyPavMap.obj")
     }
 
-    public func initBVH() {
+    public func rebuildBVH() {
         self.bvh = BVH(scene: self)
-        if let bvh = self.bvh {
-            bvh.build()
-        }
     }
 
-    public func importObject(fileName: String) {
-        var (newVertices, newFaces, newMaterials, newTextures, newSubMeshes, newMeshes) = importer.importObject(fileName: fileName)
-
+    public func addAsset(_ asset: ObjectAsset) {
+        var (newVertices, newFaces, newMaterials, newTextures, newSubMeshes, newMeshes) = (asset.vertices, asset.faces, asset.materials, asset.textures, asset.subMeshes, asset.meshes)
         for i in 0..<newSubMeshes.count {
             newSubMeshes[i].vertexOffset += Int32(truncatingIfNeeded: self.vertices.count)
             newSubMeshes[i].faceOffset += Int32(truncatingIfNeeded: self.faces.count)
