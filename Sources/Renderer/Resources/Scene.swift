@@ -9,14 +9,14 @@ public class Scene: @unchecked Sendable {
     var meshes: [Mesh] = []
 
     var camera: Camera = Camera()
-    var bvh: BVH?
+    var tlas: TLAS?
 
     init() {
         materials.append(Material()) // Default Material
     }
 
     public func rebuildBVH() {
-        self.bvh = BVH(scene: self)
+        self.tlas = TLAS(scene: self)
     }
 
     public func addAsset(_ asset: ObjectAsset) {
@@ -24,6 +24,7 @@ public class Scene: @unchecked Sendable {
         for i in 0..<newSubMeshes.count {
             newSubMeshes[i].vertexOffset += Int32(truncatingIfNeeded: self.vertices.count)
             newSubMeshes[i].faceOffset += Int32(truncatingIfNeeded: self.faces.count)
+            newSubMeshes[i].meshIndex += Int32(truncatingIfNeeded: self.meshes.count)
             if newSubMeshes[i].materialIndex == -1 {
                 newSubMeshes[i].materialIndex = 0
             } else {
@@ -39,6 +40,8 @@ public class Scene: @unchecked Sendable {
         }
         for i in 0..<newMeshes.count {
             newMeshes[i].subMeshOffset += Int32(truncatingIfNeeded: self.subMeshes.count)
+            newMeshes[i].faceOffset += Int32(truncatingIfNeeded: self.faces.count)
+            newMeshes[i].vertexOffset += Int32(truncatingIfNeeded: self.vertices.count)
         }
         for i in 0..<newMaterials.count {
             newMaterials[i].ambientTextureIndex += Int32(truncatingIfNeeded: self.textures.count)

@@ -16,4 +16,12 @@ public struct Camera: @unchecked Sendable {
         let pitchQuat = simd_quatf(angle: pitch, axis: rightAxis)
         orientation = simd_normalize(pitchQuat * yawQuat * orientation)
     }
+
+    mutating func makeOrientation(from eulerDegrees: simd_float3) {
+        let radians = eulerDegrees * (.pi / 180.0)
+        let pitch = simd_quatf(angle: radians.x, axis: simd_float3(1, 0, 0))
+        let yaw = simd_quatf(angle: radians.y, axis: simd_float3(0, 1, 0))
+        let roll = simd_quatf(angle: radians.z, axis: simd_float3(0, 0, 1))
+        orientation = simd_normalize(yaw * pitch * roll)
+    }
 }

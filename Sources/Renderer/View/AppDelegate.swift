@@ -25,7 +25,7 @@ class WindowDelegate : NSObject, NSWindowDelegate {
     public var viewController: ViewController?
 
     public var scene = Scene()
-    public var importer: ObjectImporter!
+    public var objectImporter: ObjectImporter!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         window.setContentSize(NSSize(width: screenWidth, height: screenHeight))
@@ -37,8 +37,9 @@ class WindowDelegate : NSObject, NSWindowDelegate {
         window.center()
 
         let device = MTLCreateSystemDefaultDevice()!
-        importer = ObjectImporter(device: device)
-        scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
+        objectImporter = ObjectImporter(device: device)
+        scene = importScene(filePath: "Saves/scene1.json", objectImporter: objectImporter) ?? Scene()
+        //scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
         //scene.addAsset(importer.importObject(filePath: "Assets/RobloxWorld2/RobloxWorld2.obj"))
         scene.rebuildBVH() // Mandatory
 

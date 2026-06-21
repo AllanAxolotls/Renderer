@@ -4,32 +4,9 @@ import Foundation
 
 // Settings
 private let useClockWiseTriangles: Bool = false
-private let importAtOrigin: Bool = true
+private let importAtOrigin: Bool = false
 private let printResolves: Bool = true
 
-// Use to check if a file path exists or a variant of it, and if it does exist then it returns that path
-private func resolveFilePath(filePath: String) -> String? {
-    let fileManager = FileManager.default
-
-     // Strips off '_diff' and other _... in for example: ImageName_diff.png, some 3D programs export the image as ImageName.png but append _diff in the .mtl
-    func makeVariant(_ name: String) -> String? {
-        let base = (name as NSString).deletingPathExtension
-        let ext = (name as NSString).pathExtension
-
-        guard let idx = base.lastIndex(of: "_") else { return nil }
-
-        let stripped = String(base[..<idx])
-        return ext.isEmpty ? stripped : "\(stripped).\(ext)"        
-    }
-
-    print("Resolving: \(filePath)")
-    if fileManager.fileExists(atPath: filePath) { return filePath }
-    if let variant = makeVariant(filePath) {
-        if fileManager.fileExists(atPath: variant) { return variant }
-    }
-    print("Unsuccessful: \(filePath) nor its variants were found")
-    return nil
-}
 
 // Unused, should be used for material merging in the future
 private func areMaterialsEqual(materialA: Material, materialB: Material) -> Bool {
@@ -254,39 +231,67 @@ public class ObjectImporter {
 
         let objURL = URL(fileURLWithPath: resolvedFilePath)
 
-        // Parse .obj
-        var currentVertexOffset: Int32 = 0
-        var currentVertexCount: Int32 = 0
-        var currentFaceOffset: Int32 = 0
-        var currentFaceCount: Int32 = 0
+        var currentMeshVertexOffset: Int32 = 0
+        var currentMeshVertexCount: Int32 = 0
+        var currentSubMeshVertexOffset: Int32 = 0
+        var currentSubMeshVertexCount: Int32 = 0
+        var currentMeshFaceOffset: Int32 = 0
+        var currentMeshFaceCount: Int32 = 0
+        var currentSubMeshFaceOffset: Int32 = 0
+        var currentSubMeshFaceCount: Int32 = 0
         var currentSubMeshOffset: Int32 = 0
         var currentSubMeshCount: Int32 = 0
         var currentMaterialIndex: Int32? = nil
+        var currentMeshName: String? = nil
+        var currentMeshOffset: Int32 = 0
 
         func pushSubMesh() {
-            if currentVertexCount == 0 { return }
+            if currentSubMeshVertexCount == 0 { return }
             let subMesh = SubMesh(
-                vertexOffset: currentVertexOffset, 
-                vertexCount: currentVertexCount, 
-                faceOffset: currentFaceOffset, 
-                faceCount: currentFaceCount,
+                vertexOffset: currentSubMeshVertexOffset, 
+                vertexCount: currentSubMeshVertexCount, 
+                faceOffset: currentSubMeshFaceOffset, 
+                faceCount: currentSubMeshFaceCount,
                 materialIndex: currentMaterialIndex ?? -1, 
+                meshIndex: currentMeshOffset,
             )
             subMeshes.append(subMesh)
             currentSubMeshCount += 1
-            currentVertexOffset += currentVertexCount
-            currentFaceOffset += currentFaceCount
-            currentVertexCount = 0
-            currentFaceCount = 0
+            currentSubMeshVertexOffset += currentSubMeshVertexCount
+            currentSubMeshFaceOffset += currentSubMeshFaceCount
+            currentSubMeshVertexCount = 0
+            currentSubMeshFaceCount = 0
             currentMaterialIndex = nil
         }
 
         func pushMesh() {
             if currentSubMeshCount == 0 { return }
-            let mesh = Mesh(subMeshOffset: currentSubMeshOffset, subMeshCount: currentSubMeshCount)
+            var minBounds = simd_float3(repeating: .greatestFiniteMagnitude)
+            var maxBounds = simd_float3(repeating: -.greatestFiniteMagnitude)
+            for vertexIndex in currentMeshVertexOffset ..< currentMeshVertexOffset + currentMeshVertexCount {
+                let vertex = vertices[Int(vertexIndex)]
+                minBounds = simd.min(minBounds, vertex.position)
+                maxBounds = simd.max(maxBounds, vertex.position)
+            }
+
+            var mesh = Mesh(
+                subMeshOffset: currentSubMeshOffset, subMeshCount: currentSubMeshCount,
+                faceOffset: currentMeshFaceOffset, faceCount: currentMeshFaceCount,
+                vertexOffset: currentMeshVertexOffset, vertexCount: currentMeshVertexCount,
+                localMinBounds: minBounds, localMaxBounds: maxBounds
+            )
+
+            mesh.name = currentMeshName ?? "Mesh"
+            mesh.pivot = (minBounds + maxBounds) * 0.5
             meshes.append(mesh)
+
             currentSubMeshOffset += currentSubMeshCount
             currentSubMeshCount = 0
+            currentMeshFaceOffset += currentMeshFaceCount
+            currentMeshFaceCount = 0
+            currentMeshVertexOffset += currentMeshVertexCount
+            currentMeshVertexCount = 0
+            currentMeshOffset += 1
         }
 
         let lines = contents.components(separatedBy: .newlines)
@@ -329,7 +334,8 @@ public class ObjectImporter {
                 for (i, position) in positions.enumerated() {
                     guard let position = position else { continue }
                     vertices.append(Vertex(position: position, uv: uvs[i] ?? simd_float2(0, 0), normal: normals[i] ?? faceNormal))
-                    currentVertexCount += 1
+                    currentSubMeshVertexCount += 1
+                    currentMeshVertexCount += 1
                 }
 
                 func newTriangle() {
@@ -337,7 +343,8 @@ public class ObjectImporter {
                         vertexIndices: simd_uint3(baseIndex, baseIndex + (!useClockWiseTriangles ? 1 : 2), baseIndex + (!useClockWiseTriangles ? 2 : 1)), 
                         subMeshIndex: currentSubMeshOffset
                     ))
-                    currentFaceCount += 1
+                    currentSubMeshFaceCount += 1
+                    currentMeshFaceCount += 1
                 }
 
                 func newQuad() {
@@ -349,7 +356,8 @@ public class ObjectImporter {
                         vertexIndices: simd_uint3(baseIndex, baseIndex + (!useClockWiseTriangles ? 2 : 3), baseIndex + (!useClockWiseTriangles ? 3 : 2)), 
                         subMeshIndex: currentSubMeshOffset
                     ))
-                    currentFaceCount += 2
+                    currentSubMeshFaceCount += 2
+                    currentMeshFaceCount += 2
                 }
                 
                 if vertexAttributes4 == nil { newTriangle() } else { newQuad() }
@@ -357,6 +365,7 @@ public class ObjectImporter {
             case "g":
                 pushSubMesh()
                 pushMesh()
+                currentMeshName = tokens[1]
             case "usemtl":
                 currentMaterialIndex = materialNameIndices[tokens[1]]
                 if currentMaterialIndex == nil {
@@ -386,6 +395,11 @@ public class ObjectImporter {
             for vertexPosition in vertexPositions { vertexSum += vertexPosition }
             let vertexAverage = vertexSum / Float(vertexPositions.count)
             for i in 0..<vertices.count { vertices[i].position -= vertexAverage }
+            for i in 0..<meshes.count { 
+                meshes[i].pivot -= vertexAverage 
+                meshes[i].localMinBounds -= vertexAverage
+                meshes[i].localMaxBounds -= vertexAverage
+            }
         }
 
         return ObjectAsset(vertices: vertices, faces: faces, materials: materials, textures: materialImporter.getTextures(), subMeshes: subMeshes, meshes: meshes)

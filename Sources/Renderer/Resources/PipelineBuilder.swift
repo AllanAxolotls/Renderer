@@ -32,7 +32,7 @@ final class PipelineBuilder {
         let url = URL(fileURLWithPath: "Resources/Raytracer.metallib")
         let lib = try! device.makeLibrary(URL: url)
         let function = lib.makeFunction(name: "raytrace")!
-        let argumentEncoder = function.makeArgumentEncoder(bufferIndex: 4)
+        let argumentEncoder = function.makeArgumentEncoder(bufferIndex: 6)
 
         let textureCount = textures.count
         let bufferLength = argumentEncoder.encodedLength + (textureCount * MemoryLayout<UInt64>.size)

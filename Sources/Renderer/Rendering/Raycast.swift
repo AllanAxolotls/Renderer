@@ -1,6 +1,6 @@
 import simd
 
-let epsilon: Float = .ulpOfOne
+let epsilon: Float = 0.0001
 
 public struct Ray {
     let origin: simd_float3
@@ -14,6 +14,270 @@ public struct RaycastResult {
     let distance: Float
     let barycentric: simd_float3
 }
+
+
+public struct BLASNode {
+    var minBounds: simd_float3
+    var maxBounds: simd_float3
+    var leftIndex: Int32 = -1
+    var escapeIndex: Int32 = -1
+    var faceOffset: Int32 = 0
+    var faceCount: Int32 = 0
+    var isLeaf: Int32 = 0
+}
+
+public struct TLASInstance {
+    var blasStartIndex: Int32
+    var modelMatrix: matrix_float4x4
+    var invModelMatrix: matrix_float4x4
+    var invNormalMatrix: matrix_float3x3
+}
+
+public struct TLASNode {
+    var minBounds: simd_float3
+    var maxBounds: simd_float3
+    var leftIndex: Int32 = -1
+    var escapeIndex: Int32 = -1
+    var instanceIndex: Int32 = -1
+    var isLeaf: Int32 = 0
+}
+
+final class BLAS {
+    private var scene: Scene
+    private var mesh: Mesh
+    public var blasNodes: [BLASNode] = []
+    public var leafFaces: [RayTraceTriangleGPU] = []
+    public var blasStartIndex: Int32 = 0
+    public var leafFaceOffset: Int32 = 0
+
+    init(scene: Scene, mesh: Mesh) {
+        self.scene = scene
+        self.mesh = mesh
+        self.build()
+    }
+
+    public func build() {
+        blasNodes = []
+        leafFaces = []
+        leafFaceOffset = 0
+        blasStartIndex = buildNode(faces: makeGPUFaces(), isRight: true)
+    }
+
+    @discardableResult
+    public func buildNode(faces: [RayTraceTriangleGPU], isRight: Bool) -> Int32 {
+        assert(!faces.isEmpty)
+        let startIndex = Int32(blasNodes.count)
+        let bounds = computeBounds(faces: faces)
+        var node = BLASNode(minBounds: bounds.min, maxBounds: bounds.max)
+        let faceCount: Int32 = Int32(faces.count)
+        if faceCount <= 8 { // try 4 and 2
+            node.isLeaf = 1
+            node.leftIndex = -1
+            node.escapeIndex = isRight ? -1 : startIndex + 1
+            node.faceOffset = leafFaceOffset
+            leafFaceOffset += faceCount
+            node.faceCount = faceCount
+            self.leafFaces.append(contentsOf: faces)
+            blasNodes.append(node)
+            return startIndex
+        }
+
+        blasNodes.append(node)
+        let axis = longestAxis(bounds: bounds)
+        let sorted = faces.sorted { centroid($0)[axis] < centroid($1)[axis] }
+        let middle = sorted.count / 2
+        let left = Array(sorted[..<middle])
+        let right = Array(sorted[middle...])
+        let leftIndex = buildNode(faces: left, isRight: false)
+        buildNode(faces: right, isRight: isRight)
+        let subtreeEnd = Int32(blasNodes.count)
+        blasNodes[Int(startIndex)].leftIndex = leftIndex
+        blasNodes[Int(startIndex)].escapeIndex = isRight ? -1 : subtreeEnd
+        return startIndex
+    }
+
+    public func computeBounds(faces: [RayTraceTriangleGPU]) -> (min: simd_float3, max: simd_float3) {
+        var minV = simd_float3(repeating: Float.greatestFiniteMagnitude)
+        var maxV = simd_float3(repeating: -Float.greatestFiniteMagnitude)
+
+        func include(_ p: simd_float3) {
+            minV = min(minV, p)
+            maxV = max(maxV, p)
+        }
+
+        for face in faces {
+            include(face.vertex1.position)
+            include(face.vertex2.position)
+            include(face.vertex3.position)
+        }
+
+        return (min: minV, max: maxV)
+    }
+
+    private func longestAxis(bounds: (min: simd_float3, max: simd_float3)) -> Int {
+        let extents = bounds.max - bounds.min
+        if extents.x > extents.y && extents.x > extents.z {
+            return 0 // X
+        } else if extents.y > extents.z {
+            return 1 // Y
+        } else {
+            return 2 // Z
+        }
+    }
+
+    private func centroid(_ face: RayTraceTriangleGPU) -> simd_float3 {
+        return (face.vertex1.position + face.vertex2.position + face.vertex3.position) / 3.0
+    }
+
+    public func makeGPUFaces() -> [RayTraceTriangleGPU] {
+        var faces: [RayTraceTriangleGPU] = []
+        for faceIndex in mesh.faceOffset ..< mesh.faceOffset + mesh.faceCount {
+            let face = scene.faces[Int(faceIndex)]
+            let subMesh = scene.subMeshes[Int(face.subMeshIndex)]
+            let vertex1 = scene.vertices[Int(face.vertexIndices.x)]
+            let vertex2 = scene.vertices[Int(face.vertexIndices.y)]
+            let vertex3 = scene.vertices[Int(face.vertexIndices.z)]
+            let edge1 = vertex2.position - vertex1.position
+            let edge2 = vertex3.position - vertex1.position
+            faces.append(RayTraceTriangleGPU(
+                vertex1: vertex1, vertex2: vertex2, vertex3: vertex3, 
+                edge1: edge1, edge2: edge2,
+                // TODO: Change to 3 normals in future
+                normal: simd_normalize(simd_cross(edge1, edge2)),
+                materialIndex: subMesh.materialIndex
+            ))
+        }
+        return faces
+    }
+}
+
+final class TLAS {
+    private var scene: Scene
+    public var tlasNodes: [TLASNode] = []
+    public var tlasInstances: [TLASInstance] = []
+
+    public var blas_s: [BLAS] = []
+    public var blasNodes: [BLASNode] = []
+    public var faces: [RayTraceTriangleGPU] = []
+
+    init(scene: Scene) {
+        self.scene = scene;
+        self.build()
+    }
+
+    public func build() {
+        print("Building Acceleration Structure")
+        tlasNodes = []
+        tlasInstances = []
+        _ = buildNode(meshes: scene.meshes, isRight: true)
+
+        for (index, blas) in blas_s.enumerated() {
+            let nodeShift = Int32(self.blasNodes.count)
+            self.tlasInstances[index].blasStartIndex = nodeShift
+            let faceOffset = Int32(self.faces.count)
+            for blasNodeIndex in 0..<blas.blasNodes.count {
+                var blasNode = blas.blasNodes[blasNodeIndex]
+                if blasNode.leftIndex >= 0 { blasNode.leftIndex += nodeShift }
+                if blasNode.escapeIndex >= 0 { blasNode.escapeIndex += nodeShift }
+                blasNode.faceOffset += faceOffset
+                self.blasNodes.append(blasNode)
+            }
+            self.faces.append(contentsOf: blas.leafFaces)
+        }
+
+        print("Finished Building Acceleration Structure")
+    }
+
+    @discardableResult
+    public func buildNode(meshes: [Mesh], isRight: Bool) -> Int32 {
+        assert(!meshes.isEmpty)
+        let startIndex = Int32(tlasNodes.count)
+        let bounds = computeMeshBounds(meshes: meshes)
+        var node = TLASNode(minBounds: bounds.min, maxBounds: bounds.max)
+
+        if meshes.count == 1 {
+            node.isLeaf = 1
+            node.leftIndex = -1
+            node.escapeIndex = isRight ? -1 : startIndex + 1 // if every branch is right, this is the last node thus escape index should be -1 to mark traversal stop
+
+            let instanceIndex = Int32(tlasInstances.count)
+            tlasInstances.append(TLASInstance(
+                blasStartIndex: 0, // Gets set in build()
+                modelMatrix: meshes[0].modelMatrix ,
+                invModelMatrix: meshes[0].invModelMatrix,
+                invNormalMatrix: simd_transpose(matrix_float3x3(columns: (
+                    simd_float3(meshes[0].invModelMatrix.columns.0.x, meshes[0].invModelMatrix.columns.0.y, meshes[0].invModelMatrix.columns.0.z),
+                    simd_float3(meshes[0].invModelMatrix.columns.1.x, meshes[0].invModelMatrix.columns.1.y, meshes[0].invModelMatrix.columns.1.z),
+                    simd_float3(meshes[0].invModelMatrix.columns.2.x, meshes[0].invModelMatrix.columns.2.y, meshes[0].invModelMatrix.columns.2.z)
+                )))
+            ))
+
+            self.blas_s.append(BLAS(scene: scene, mesh: meshes[0]))
+           
+            node.instanceIndex = instanceIndex
+            tlasNodes.append(node)
+            return startIndex
+        }
+
+        tlasNodes.append(node)
+
+        let axis = longestAxis(bounds: bounds)
+        let sorted = meshes.sorted { $0.pivot[axis] < $1.pivot[axis] }
+        let middle = sorted.count / 2
+        let left = Array(sorted[..<middle])
+        let right = Array(sorted[middle...])
+        let leftIndex = buildNode(meshes: left, isRight: false)
+        buildNode(meshes: right, isRight: isRight)
+        let subtreeEnd = Int32(tlasNodes.count)
+        tlasNodes[Int(startIndex)].leftIndex = leftIndex
+        tlasNodes[Int(startIndex)].escapeIndex = isRight ? -1 : subtreeEnd
+        return startIndex
+    }
+
+    public func reform() {
+
+    }
+
+
+    // Helpers
+    private func computeMeshBounds(meshes: [Mesh]) -> (min: simd_float3, max: simd_float3) {
+        var minV = simd_float3(repeating: Float.greatestFiniteMagnitude)
+        var maxV = simd_float3(repeating: -Float.greatestFiniteMagnitude)
+
+        func include(_ p: simd_float3) {
+            minV = min(minV, p)
+            maxV = max(maxV, p)
+        }
+
+        for mesh in meshes {
+            include(mesh.worldMinBounds)
+            include(mesh.worldMaxBounds)
+        }
+
+        return (min: minV, max: maxV)
+    }
+
+    private func longestAxis(bounds: (min: simd_float3, max: simd_float3)) -> Int {
+        let extents = bounds.max - bounds.min
+        if extents.x > extents.y && extents.x > extents.z {
+            return 0 // X
+        } else if extents.y > extents.z {
+            return 1 // Y
+        } else {
+            return 2 // Z
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
 
 public struct BVHNode {
     var boundsMin: simd_float3

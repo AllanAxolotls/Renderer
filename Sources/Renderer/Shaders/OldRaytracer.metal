@@ -6,13 +6,14 @@ constant float3 horizonColor = float3(207.0/255.0, 219.0/255.0, 230.0/255.0);
 constant float3 zenithColor = float3(60.0/255.0, 138.0/255.0, 201.0/255.0);
 constant float skyIntensity = 4.0;
 constant float3 sunDirection = float3(0.0, 1.0, 0.0); // Note: the direction is inverted, technically it should be: -sunDirection
-constant float3 invSunDirection = 1.0 / sunDirection;
 constant float3 sunColor = float3(10.0, 9.5, 8.5) * 0.5;
 constant float sunIntensity = 256.0;
+//constant float3 lightAngle = float3(0, -1, 0);
 constant int maxLightBounces = 10;
 
 struct Uniforms {
-    int sampleIndex;
+    int sampleIndex; // Which light-pass it is
+    int headNodeIndex;
     float fovScale;
     float3 cameraPosition;
     float3 cameraForward;
@@ -38,8 +39,7 @@ struct Face {
 
 struct Material {
     float3 ambientColor;
-    int ambientTextureIndex; // -1 = no texture
-    //float emissive;
+    int ambientTextureIndex; // if -1 then no texture
     float dissolve;
 };
 
@@ -47,30 +47,13 @@ struct TextureCollection {
     array<texture2d<float>, 128> textures;
 };
 
-struct BLASNode {
-    float3 minBounds;
-    float3 maxBounds;
+struct BVHNode {
+    float3 boundsMin;
+    float3 boundsMax;
     int leftIndex;
-    int escapeIndex;
+    int rightIndex;
     int faceOffset;
     int faceCount;
-    int isLeaf;
-};
-
-struct TLASInstance {
-    int blasStartIndex;
-    float4x4 modelMatrix;
-    float4x4 invModelMatrix;
-    float3x3 invNormalMatrix;
-};
-
-struct TLASNode {
-    float3 minBounds;
-    float3 maxBounds;
-    int leftIndex;
-    int escapeIndex;
-    int instanceIndex; // TLAS Instance
-    int isLeaf;
 };
 
 struct RaycastResult {
@@ -151,77 +134,35 @@ RaycastResult intersectsFace(float3 origin, float3 direction, Face face) {
     return RaycastResult { .distance = INFINITY };
 }
 
-// BVH traversal, Bottom Level Acceleration Structure
-RaycastResult traverseBLAS(
-    float3 origin, float3 look, float3 inverseLook,
-    device BLASNode* blasNodes, int blasStartIndex,
-    device Face* faces
-) {
-    RaycastResult closestResult = RaycastResult{ .distance = INFINITY };
-    int nodeIndex = blasStartIndex;
+RaycastResult traverseBVH(float3 origin, float3 look, int headNodeIndex, device Face* leafFaces, device BVHNode* bvhNodes) {
+    int stack[64];
+    int stackPtr = 0;
+    stack[stackPtr++] = headNodeIndex;
 
-    while (nodeIndex != -1) {
-        BLASNode node = blasNodes[nodeIndex];
-        if (intersectsAABB(origin, inverseLook, node.minBounds, node.maxBounds)) {
-            if (node.isLeaf) {
-                for (int i = node.faceOffset; i < node.faceCount + node.faceOffset; ++i) {
-                    Face face = faces[i];
-                    RaycastResult result = intersectsFace(origin, look, face);
-                    if (result.distance < closestResult.distance) {
-                        closestResult = result;
-                        closestResult.leafFaceIndex = i;
-                    }
-                }
-                nodeIndex = node.escapeIndex;
-            } else {
-                nodeIndex = node.leftIndex;
+    RaycastResult closestResult = RaycastResult{ .distance = INFINITY };
+
+    float3 inverseLook = 1.0 / look;
+    while (stackPtr > 0) {
+        int nodeIndex = stack[--stackPtr];
+        BVHNode node = bvhNodes[nodeIndex];
+
+        if (!intersectsAABB(origin, inverseLook, node.boundsMin, node.boundsMax)) { continue; }
+
+        for (int i = node.faceOffset; i < node.faceCount + node.faceOffset; ++i) {
+            Face face = leafFaces[i];
+            RaycastResult result = intersectsFace(origin, look, face);
+            if (result.distance < closestResult.distance) {
+                closestResult = result;
+                closestResult.leafFaceIndex = i;
             }
-        } else {
-            nodeIndex = node.escapeIndex;
         }
+
+        if (node.leftIndex != -1) { stack[stackPtr++] = node.leftIndex; }
+        if (node.rightIndex != -1) { stack[stackPtr++] = node.rightIndex; }
     }
+
     return closestResult;
 }
-
-// Top Level Acceleration Structure
-RaycastResult traverseTLAS(
-    float3 origin, float3 look, float3 inverseLook,
-    device TLASNode* tlasNodes, device TLASInstance* instances, 
-    device BLASNode* blasNodes, device Face* faces
-) {
-    RaycastResult closestResult = RaycastResult{ .distance = INFINITY };
-    int nodeIndex = 0;
-    while (nodeIndex != -1) {
-        TLASNode node = tlasNodes[nodeIndex];
-        if (intersectsAABB(origin, inverseLook, node.minBounds, node.maxBounds)) {
-            if (node.isLeaf) {
-                TLASInstance instance = instances[node.instanceIndex];
-                float3 localOrigin = (instance.invModelMatrix * float4(origin, 1)).xyz;
-                float3 localLook = normalize((instance.invModelMatrix * float4(look, 0)).xyz);
-                float3 localInverseLook = 1.0 / localLook;
-                RaycastResult result = traverseBLAS(localOrigin, localLook, localInverseLook, blasNodes, instance.blasStartIndex, faces);
-
-                if (result.distance != INFINITY) {
-                    float3 worldHit = (instance.modelMatrix * float4(result.hit, 1)).xyz;
-                    result.distance = length(worldHit - origin);
-                   
-                    if (result.distance < closestResult.distance) {
-                        result.hit = worldHit;
-                        result.normal = normalize(instance.invNormalMatrix * result.normal);
-                        closestResult = result;
-                    }
-                }
-                nodeIndex = node.escapeIndex;
-            } else {
-                nodeIndex = node.leftIndex;
-            }
-        } else {
-            nodeIndex = node.escapeIndex;
-        }
-    }
-    return closestResult;
-}
-
 
 float3 cosineWeightedHemisphere(float3 normal, float2 rand) {
     float phi = 2.0 * M_PI_F * rand.x;
@@ -259,11 +200,9 @@ kernel void raytrace(
     
     device Uniforms* uniforms [[buffer(0)]],
     device Material* materials [[buffer(1)]],
-    device TLASNode* tlasNodes [[buffer(2)]],
-    device TLASInstance* tlasInstances [[buffer(3)]],
-    device BLASNode* blasNodes [[buffer(4)]],
-    device Face* faces [[buffer(5)]],
-    device TextureCollection& collection [[buffer(6)]],
+    device BVHNode* bvhNodes [[buffer(2)]],
+    device Face* leafFaces [[buffer(3)]],
+    device TextureCollection& collection [[buffer(4)]],
     
     uint2 gid [[thread_position_in_grid]]
 ) {
@@ -292,10 +231,8 @@ kernel void raytrace(
     float3 throughput = float3(1.0, 1.0, 1.0);
     float3 rayOrigin = uniforms->cameraPosition;
     float3 rayDirection = look;
-    float3 invRayDirection = 1.0 / rayDirection;
-   
     for (uint bounce = 0; bounce < maxLightBounces; bounce++) {
-        RaycastResult result = traverseTLAS(rayOrigin, rayDirection, invRayDirection, tlasNodes, tlasInstances, blasNodes, faces);
+        RaycastResult result = traverseBVH(rayOrigin, rayDirection, uniforms->headNodeIndex, leafFaces, bvhNodes);
         if (result.distance == INFINITY) {
             float t = 0.5 * (rayDirection.y + 1.0);
             float3 skyColor = mix(horizonColor, zenithColor, t);
@@ -317,11 +254,11 @@ kernel void raytrace(
             albedo = mix(material.ambientColor.xyz, texColor.xyz, texColor.w); // Alpha Blend Texture with Material Color
         }
 
-        // Interpolated Normal (WRONG when combined with TRANSFORMATION MATRIX, FIX LATER!)
+        // Interpolated Normal
         float3 normal = normalize(result.barycentric.x * result.hitFace.vertex1.normal + result.barycentric.y * result.hitFace.vertex2.normal + result.barycentric.z * result.hitFace.vertex3.normal);
         float normalDotLight = max(dot(normal, sunDirection), 0.0);
         if (normalDotLight > 0.0) {
-            RaycastResult shadowResult = traverseTLAS(result.hit + normal * 0.01, sunDirection, invSunDirection, tlasNodes, tlasInstances, blasNodes, faces);
+            RaycastResult shadowResult = traverseBVH(result.hit + normal * 0.01, sunDirection, uniforms->headNodeIndex, leafFaces, bvhNodes);
             bool sunVisible = shadowResult.distance == INFINITY;
             if (sunVisible) radiance += throughput * albedo * sunColor * normalDotLight;
         }
@@ -341,7 +278,6 @@ kernel void raytrace(
         float3 bounceDirection = cosineWeightedHemisphere(normal, bounceRand);
         rayOrigin = result.hit + normal * 0.01; // Add tiny bit of normal so that the next bounce doesn't intersect with the same face
         rayDirection = bounceDirection;
-        invRayDirection = 1.0 / rayDirection;
     }
 
     float4 accumColor = float4(radiance.xyz, 1.0);

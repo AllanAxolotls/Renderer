@@ -82,10 +82,6 @@ import MetalKit
             simd_float4(-dot(R,P), -dot(U,P), -dot(F,P), 1)
         ))
 
-        var finalMatrix = projectionMatrix * viewMatrix //* modelMatrix
-        memcpy(matrixBuffer.contents(), &finalMatrix,
-               MemoryLayout<matrix_float4x4>.stride)
-
         let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass)!
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentSamplerState(sampler, index: 0)
@@ -95,6 +91,10 @@ import MetalKit
         encoder.setFrontFacing(MTLWinding.clockwise)
 
         func drawSubMesh(subMesh: SubMesh) {
+            let mesh = scene.meshes[Int(subMesh.meshIndex)]
+            var MVPMatrix = projectionMatrix * viewMatrix * mesh.modelMatrix
+            encoder.setVertexBytes(&MVPMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 1)
+
             let indexedMaterial = scene.materials[Int(subMesh.materialIndex)]
             encoder.setFragmentTexture(scene.textures[Int(indexedMaterial.ambientTextureIndex)], index: 0)
             var material = MaterialGPU(dissolve: indexedMaterial.dissolve)

@@ -401,6 +401,40 @@ Dit online boek is zeker handig, veel goeie informatie:
 https://pbr-book.org/3ed-2018/contents
 Alle source code van de voorbeelden is erbij gegeven: https://github.com/mmp/pbrt-v3
 
+Ik werk aan een Scene Importer die een scene.json import. Ik ga ook gelijk een transformatie matrix
+toevoegen aan meshes voor: positie, rotatie en grootte. Om dat toe te voegen aan de Rasterizer moet ik:
+een transformatie matrix maken van de 3 gegevens van de mesh en dan die matrix in MVP matrix calculatie stoppen
+die eerst weg gecomment was. 
+Daarnaast heb ik wat files herorganiseerd, zoals Object.swift die is veranderd in Geometry.swift, en de plek
+is in Resource i.p.v. Rendering. Het is gelukt, ik heb ook gelijk een Pivot point toegevoegd aan elke mesh zodat rotatie
+om dat specifieke punt heen gaat. Vooraf ging het om de world-origin en dat is niet de bedoeling, maar als je dat toch wil: mesh.pivot = simd_float3(0, 0, 0), vet handig dus
+Het is optioneel trouwens om in scene.json de .obj children toe te voegen. Doe het alleen als je de positie/rotatie/schaal wil wijzigen
+AmbientColor, versie en naam van de scene doen op dit moment helemaal niks trouwens. Nu ga ik nog ff de BVH veranderen. Het kan op twee manieren:
+Alle vertex data world-space maken door de modelMatrix in te bakken, maar dat is niet geniaal. De beste manier is om de inverse van de matrix te nemen en
+de raycast in local-space te doen. Het nadeel daarvan: Elke Mesh heeft z'n eigen BVH nodig i.p.v. EEN algemene BVH. 
+Dan zijn de BVHs: BLAS (Bottom Level Acceleration Structure)
+en er komt een TLAS boven op (Top Level Acceleration Structure) die per mesh bounding box intersects gebruikt, een TLAS reformen is qua
+performance veel cheaper omdat het alleen maar AABBs zijn
+Daarnaast wilde ik fixen dat de BVH traversal een fixed size stack heeft van 64 max, er is gelukkig een manier voor: "rope BVH/stackless traversal/threaded BVH" genoemd
+door per node een "escapeIndex" op te slaan, in andere woorden gewoon een index om naar de volgende subtree te gaan
+Ik heb oprecht 4 uur zitten klooien met bugs, kwam er uiteindelijk achter dat
+ik was vergeten om te kijken of de RAY uberhaupt een intersectie heeft en dat zorgde voor
+behoorlijk veel graphics bugs. Nu heb ik NOG een bug: de textures verdwijnen in RayTracing
+Tenminste werkt de rest wel weer. Deze was makkelijker te fixen: de argument buffer die
+textures vast hield die wordt als enige gemaakt in de Pipeline builder en ik was vergeten
+de index van de argument buffer te verplaatsen van 4 naar 6 omdat er nieuwe buffers bij
+zijn gekomen.
+
+
+
+
+
+
+
+
+
+
+=============================================================================================================================================
 
 Notes voor mezelf:
 wat kan misschien theoretisch beter: 

@@ -8,6 +8,7 @@ let saveAndExitOnGPU: Bool = false // If true, one frame gets saved of the raytr
 let maxSamples: Int32 = 100
 let printCPUProgressEveryRow: Bool = true
 
+/*
 private func toByte(_ x: Float) -> UInt8 {
     let safe = x.isNaN || x.isInfinite ? 0 : x
     let clamped = min(max(safe, 0), 255)
@@ -138,7 +139,7 @@ private func raycastPixel(
         print("Failed to create image.")
     }
     exit(0)
-}
+}*/
 
 final class RayTracerRenderer: Renderer {
     // Image Creation here
@@ -147,14 +148,13 @@ final class RayTracerRenderer: Renderer {
     var pipelineBuilder: PipelineBuilder!
     var pipeline: MTLComputePipelineState!
 
-    var argumentBuffer: MTLBuffer!
     let uniformsBuffer: MTLBuffer!
-    //var vertexBuffer: MTLBuffer!
-    //var faceBuffer: MTLBuffer!
-    //var subMeshBuffer: MTLBuffer!
     var materialBuffer: MTLBuffer!
-    var bvhNodeBuffer: MTLBuffer!
-    var leafFaceBuffer: MTLBuffer!
+    var tlasNodeBuffer: MTLBuffer!
+    var tlasInstanceBuffer: MTLBuffer!
+    var blasNodeBuffer: MTLBuffer!
+    var faceBuffer: MTLBuffer!
+    var argumentBuffer: MTLBuffer!
 
     var accumTexture: MTLTexture? = nil
     var lastCameraPosition: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
@@ -172,7 +172,6 @@ final class RayTracerRenderer: Renderer {
 
         var uniforms = Uniforms(
             sampleIndex: sampleIndex,
-            headNodeIndex: scene.bvh!.headNodeIndex, 
             fovScale: tan(FOVRad * 0.5), 
             cameraPosition: scene.camera.position,
             cameraForward: scene.camera.forward, 
@@ -202,11 +201,17 @@ final class RayTracerRenderer: Renderer {
         scene.materials.withUnsafeBufferPointer { ptr in 
             self.materialBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<Material>.stride * scene.materials.count)
         }
-        scene.bvh!.nodes.withUnsafeBufferPointer { ptr in
-            self.bvhNodeBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<BVHNode>.stride * scene.bvh!.nodes.count)
+        scene.tlas!.tlasNodes.withUnsafeBufferPointer { ptr in
+            self.tlasNodeBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<TLASNode>.stride * scene.tlas!.tlasNodes.count)
         }
-        scene.bvh!.leafFaces.withUnsafeBufferPointer { ptr in
-            self.leafFaceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<RayTraceTriangleGPU>.stride * scene.bvh!.leafFaces.count)
+        scene.tlas!.tlasInstances.withUnsafeBufferPointer { ptr in
+            self.tlasInstanceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<TLASInstance>.stride * scene.tlas!.tlasInstances.count)
+        }
+        scene.tlas!.blasNodes.withUnsafeBufferPointer { ptr in
+            self.blasNodeBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<BLASNode>.stride * scene.tlas!.blasNodes.count)
+        }
+        scene.tlas!.faces.withUnsafeBufferPointer { ptr in
+            self.faceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<RayTraceTriangleGPU>.stride * scene.tlas!.faces.count)
         }
     }
 
@@ -219,7 +224,11 @@ final class RayTracerRenderer: Renderer {
 
     func draw(view: MTKView, commandQueue: MTLCommandQueue) {
         autoreleasepool {
-            if raytraceOnCPU { calculateImageCPU(scene: scene) } else { // GPU
+            if raytraceOnCPU {
+                print("CPU drawing is unavailable right now")
+                exit(1)
+                //calculateImageCPU(scene: scene) 
+            } else { // GPU
                 guard let drawable = view.currentDrawable else { return }
                 
                 //TODO: In the future 'sceneChanged' will be required aswell
@@ -257,7 +266,6 @@ final class RayTracerRenderer: Renderer {
 
                 var uniforms = Uniforms(
                     sampleIndex: sampleIndex,
-                    headNodeIndex: scene.bvh!.headNodeIndex,
                     fovScale: tan(FOVRad * 0.5), 
                     cameraPosition: scene.camera.position,
                     cameraForward: scene.camera.forward, 
@@ -273,9 +281,11 @@ final class RayTracerRenderer: Renderer {
                 
                 encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
                 encoder.setBuffer(materialBuffer, offset: 0, index: 1)
-                encoder.setBuffer(bvhNodeBuffer, offset: 0, index: 2)
-                encoder.setBuffer(leafFaceBuffer, offset: 0, index: 3)
-                encoder.setBuffer(argumentBuffer, offset: 0, index: 4)
+                encoder.setBuffer(tlasNodeBuffer, offset: 0, index: 2)
+                encoder.setBuffer(tlasInstanceBuffer, offset: 0, index: 3)
+                encoder.setBuffer(blasNodeBuffer, offset: 0, index: 4)
+                encoder.setBuffer(faceBuffer, offset: 0, index: 5)
+                encoder.setBuffer(argumentBuffer, offset: 0, index: 6)
                 for texture in scene.textures { encoder.useResource(texture, usage: .sample) }
 
                 let width = pipeline.threadExecutionWidth

@@ -1,0 +1,30 @@
+{
+    "sceneMetaData": {
+        "name": "Scene 1",
+        "version": "1.0",
+        "ambientColor": [1, 1, 1]
+    },
+    "assets": [
+        {
+            "source": "Assets/RobloxWorld2/RobloxWorld2.obj",
+            "children": [
+                {
+                    "name": "Spawnlocation1",
+                    "position": [0, 4, 0],
+                    "rotation": [0, 0, 0],
+                    "size": [1, 1, 1]
+                },
+                {
+                    "name": "Spawnlocation2",
+                    "position": [0, 4, 0],
+                    "rotation": [0, 0, 0],
+                    "size": [1, 1, 1]
+                }
+            ]
+        }
+    ],
+    "camera": {
+        "position": [0, 0, 0],
+        "rotation": [0, 20, 0]
+    }
+}
