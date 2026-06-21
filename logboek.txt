@@ -381,11 +381,25 @@ de GPU frame klaar is en in dat geval zijn er geen visual glitches.
 Door .waitUntilCompleted() zijn de lagspikes ook meer verspreid dan zonder 
 !Bug: bij heel erg slechte performance stopt Sampling Index gewoon met omhoog gaan?
 Accumulation texture verbeterd. 
-Echte light bounces nu ook door middel van radiance en throughput
-een simpele zon toegevoegd
-"Russian Roulette" techniek toegevoegd
+Echte light bounces toegevoegd nu ook door middel van radiance en throughput die worden opgehoopt en dan wordt het gemiddelde ervan genomen, 
+de light bounces worden weighted-hemisphere-random richtingen opgestuurd zodat afhankelijk van de richting er meer of minder radiance op plekken valt,
+dit principe heet "Monte Carlo (Pathtracing)", het nadeel is dat er zichtbare noise is, het aantal samples gaat exponentieel omhoog des te minder noise je wel
+Ik heb ook een simpele zon toegevoegd,
+en de "Russian Roulette termination" techniek toegevoegd
 !Bug: ook na lang raytracen en dan terug switchen, HEEL SOMS, dan wordt de rasterizer frame niet meer gecleared, ik weet niet of
 dat aan MIJN code ligt of aan Apple of omdat mijn laptop strugglet door de hitte. (nog maar 1 keer gebeurd)
+
+
+21-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:20- (duur: ) ]
+Wat bronnen toevoegen.
+Hier is de abstracte wiskunde achter Russian Roulette termination
+https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Russian_Roulette_and_Splitting
+https://web.cs.wpi.edu/~emmanuel/courses/cs563/S07/talks/alex_white_wk11_pt1.pdf
+Dit online boek is zeker handig, veel goeie informatie:
+https://pbr-book.org/3ed-2018/contents
+Alle source code van de voorbeelden is erbij gegeven: https://github.com/mmp/pbrt-v3
 
 
 Notes voor mezelf:
