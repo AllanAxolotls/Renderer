@@ -392,7 +392,7 @@ dat aan MIJN code ligt of aan Apple of omdat mijn laptop strugglet door de hitte
 
 21-6-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
-[ 11:20- (duur: ) ]
+[ 11:20-00:21 (duur: 13 uur, 1 min. ) ]
 Wat bronnen toevoegen.
 Hier is de abstracte wiskunde achter Russian Roulette termination
 https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Russian_Roulette_and_Splitting
@@ -424,8 +424,17 @@ Tenminste werkt de rest wel weer. Deze was makkelijker te fixen: de argument buf
 textures vast hield die wordt als enige gemaakt in de Pipeline builder en ik was vergeten
 de index van de argument buffer te verplaatsen van 4 naar 6 omdat er nieuwe buffers bij
 zijn gekomen.
-
-
+Eindelijk een BLAS en TLAS wat betekent dat ik nu transformaties kan doen op objecten
+zonder de BLAS te hoeven herbouwen, alleen de TLAS in dat geval, wat veel beter is
+Tijdens het proberen te fixen van de bugs kwam ChatGPT met het idee om mijn BVH ver te upgraden door "SAH" (Surface Area Heuristic)
+te gebruiken i.p.v. Median Split, waarbij ik nu precies het midden zoek
+elke keer van een aantal driehoeken en zo de ruimte verdeel.
+Ik ga later misschien SAH proberen toe te voegen want het wordt al complex genoeg. Eerst wat meer echte raytrace dingen toevoegen zoals: Doorzichtige objecten
+en objecten die licht emitteren.
+Transparantie (dissolve) toevoegen was oprecht een piece of cake. Slechts een kans maken dat de lichtstraal door de driehoek heen valt afhankelijk van de dissolve is genoeg
+ik ben erg blij met het resultaat. Morgen werken aan emissive materials.
+De scene Importer is ook al een stuk meer polished, fields zijn nu optioneel, en materials kunnen ge-overwrite worden dus fijn voor testen ook.
+Er is nog wel erg veel noise zichtbaar, ik moet een keer voor de lol 512 of zelfs 1024 samples testen en kijken of het echt weg gaat. 
 
 
 

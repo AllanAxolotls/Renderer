@@ -54,7 +54,6 @@ struct BLASNode {
     int escapeIndex;
     int faceOffset;
     int faceCount;
-    int isLeaf;
 };
 
 struct TLASInstance {
@@ -70,7 +69,6 @@ struct TLASNode {
     int leftIndex;
     int escapeIndex;
     int instanceIndex; // TLAS Instance
-    int isLeaf;
 };
 
 struct RaycastResult {
@@ -163,7 +161,7 @@ RaycastResult traverseBLAS(
     while (nodeIndex != -1) {
         BLASNode node = blasNodes[nodeIndex];
         if (intersectsAABB(origin, inverseLook, node.minBounds, node.maxBounds)) {
-            if (node.isLeaf) {
+            if (node.leftIndex == -1) { // if it's a leaf
                 for (int i = node.faceOffset; i < node.faceCount + node.faceOffset; ++i) {
                     Face face = faces[i];
                     RaycastResult result = intersectsFace(origin, look, face);
@@ -194,7 +192,7 @@ RaycastResult traverseTLAS(
     while (nodeIndex != -1) {
         TLASNode node = tlasNodes[nodeIndex];
         if (intersectsAABB(origin, inverseLook, node.minBounds, node.maxBounds)) {
-            if (node.isLeaf) {
+            if (node.leftIndex == -1) { // if it's a leaf
                 TLASInstance instance = instances[node.instanceIndex];
                 float3 localOrigin = (instance.invModelMatrix * float4(origin, 1)).xyz;
                 float3 localLook = normalize((instance.invModelMatrix * float4(look, 0)).xyz);
@@ -305,8 +303,17 @@ kernel void raytrace(
         }
 
         Material material = materials[result.hitFace.materialIndex];
-        float3 albedo;
 
+        // Stochastic Dissolve Check
+        seed += float(bounce) * 79.19;
+        if (random(seed) > material.dissolve) {
+            // To avoid intersecting the same triangle, nudge the ray a bit
+            rayOrigin = result.hit + rayDirection * 0.001f;
+            // Force the bounce loop to continue using the exact same direction, bypassing all lighting math, albedo sampling, and throughput loss.
+            continue; 
+        }
+
+        float3 albedo;
         if (material.ambientTextureIndex == -1) {
             albedo = material.ambientColor.xyz;
         } else {

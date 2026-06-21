@@ -23,7 +23,6 @@ public struct BLASNode {
     var escapeIndex: Int32 = -1
     var faceOffset: Int32 = 0
     var faceCount: Int32 = 0
-    var isLeaf: Int32 = 0
 }
 
 public struct TLASInstance {
@@ -39,7 +38,6 @@ public struct TLASNode {
     var leftIndex: Int32 = -1
     var escapeIndex: Int32 = -1
     var instanceIndex: Int32 = -1
-    var isLeaf: Int32 = 0
 }
 
 final class BLAS {
@@ -71,7 +69,6 @@ final class BLAS {
         var node = BLASNode(minBounds: bounds.min, maxBounds: bounds.max)
         let faceCount: Int32 = Int32(faces.count)
         if faceCount <= 8 { // try 4 and 2
-            node.isLeaf = 1
             node.leftIndex = -1
             node.escapeIndex = isRight ? -1 : startIndex + 1
             node.faceOffset = leafFaceOffset
@@ -196,7 +193,6 @@ final class TLAS {
         var node = TLASNode(minBounds: bounds.min, maxBounds: bounds.max)
 
         if meshes.count == 1 {
-            node.isLeaf = 1
             node.leftIndex = -1
             node.escapeIndex = isRight ? -1 : startIndex + 1 // if every branch is right, this is the last node thus escape index should be -1 to mark traversal stop
 

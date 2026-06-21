@@ -6,25 +6,23 @@
     },
     "assets": [
         {
-            "source": "Assets/RobloxWorld2/RobloxWorld2.obj",
+            "source": "Assets/FriedChicken/FriedChicken.obj"
+        },
+        {
+            "source": "Assets/Heart/Heart.obj",
             "children": [
-                {
-                    "name": "Spawnlocation1",
-                    "position": [0, 4, 0],
-                    "rotation": [0, 0, 0],
-                    "size": [1, 1, 1]
-                },
-                {
-                    "name": "Spawnlocation2",
-                    "position": [0, 4, 0],
-                    "rotation": [0, 0, 0],
-                    "size": [1, 1, 1]
+                { 
+                    "name": "Heart", 
+                    "position": [0, 0, 2],
+                    "material": {
+                        "dissolve": 0.9
+                    }
                 }
             ]
         }
     ],
     "camera": {
-        "position": [0, 0, 0],
-        "rotation": [0, 20, 0]
+        "position": [0, 0, 5],
+        "rotation": [0, 180, 0]
     }
 }

@@ -4,7 +4,7 @@ import Foundation
 
 // Settings
 private let useClockWiseTriangles: Bool = false
-private let importAtOrigin: Bool = false
+private let importAtOrigin: Bool = true
 private let printResolves: Bool = true
 
 

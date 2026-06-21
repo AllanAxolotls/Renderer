@@ -2,9 +2,9 @@ import Foundation
 import simd
 
 private struct SceneData: Codable {
-    let sceneMetaData: SceneMetaData
-    let assets: [SceneAsset]
-    let camera: SceneCamera
+    let sceneMetaData: SceneMetaData?
+    let assets: [SceneAsset]?
+    let camera: SceneCamera?
 }
 
 private struct Vec3: Codable {
@@ -25,26 +25,32 @@ private struct Vec3: Codable {
 }
 
 private struct SceneMetaData: Codable {
-    let name: String
-    let version: String
-    let ambientColor: Vec3
+    let name: String?
+    let version: String?
+    let ambientColor: Vec3?
 }
 
 private struct SceneAsset: Codable {
-    let source: String
-    let children: [SceneAssetChild]
+    let source: String?
+    let children: [SceneAssetChild]?
 }
 
 private struct SceneAssetChild: Codable {
-    let name: String
-    let position: Vec3
-    let rotation: Vec3
-    let size: Vec3
+    let name: String?
+    let position: Vec3?
+    let rotation: Vec3?
+    let size: Vec3?
+    let material: SceneAssetMaterial?
+}
+
+private struct SceneAssetMaterial: Codable {
+    let ambientColor: Vec3?
+    let dissolve: Float?
 }
 
 private struct SceneCamera: Codable {
-    let position: Vec3
-    let rotation: Vec3
+    let position: Vec3?
+    let rotation: Vec3?
 }
 
 public func importScene(filePath: String, objectImporter: ObjectImporter) -> Scene? {
@@ -66,19 +72,24 @@ public func importScene(filePath: String, objectImporter: ObjectImporter) -> Sce
 
     let scene = Scene()
 
-    scene.camera.position = sceneData.camera.position.value
-    scene.camera.makeOrientation(from: sceneData.camera.rotation.value)
+    if let posValue = sceneData.camera?.position?.value { scene.camera.position = posValue }
+    if let rotValue = sceneData.camera?.rotation?.value { scene.camera.makeOrientation(from: rotValue) }
 
-    for asset in sceneData.assets {
-        var object = objectImporter.importObject(filePath: asset.source)
+    for asset in sceneData.assets ?? [] {
+        guard let source = asset.source else { continue }
+        var object = objectImporter.importObject(filePath: source)
         
         // Set Mesh Transformation here 
-        for child in asset.children {
+        for child in asset.children ?? [] { // Submesh
             for index in object.meshes.indices {
                 if object.meshes[index].name != child.name { continue }
-                object.meshes[index].position = child.position.value
-                object.meshes[index].rotation = child.rotation.value
-                object.meshes[index].size = child.size.value
+                if let material = child.material {
+                    if let ambientColor = material.ambientColor?.value { object.materials[index].ambientColor = ambientColor }
+                    if let dissolve = material.dissolve { object.materials[index].dissolve = dissolve }
+                }
+                if let posValue = child.position?.value { object.meshes[index].position = posValue }
+                if let rotValue = child.rotation?.value { object.meshes[index].rotation = rotValue }
+                if let sizeValue = child.size?.value { object.meshes[index].size = sizeValue }
             }
         }
 
