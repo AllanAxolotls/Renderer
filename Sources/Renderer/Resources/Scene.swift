@@ -10,13 +10,22 @@ public class Scene: @unchecked Sendable {
 
     var camera: Camera = Camera()
     var tlas: TLAS?
+    var tlasReformed: Bool = false
 
     init() {
         materials.append(Material()) // Default Material
     }
 
-    public func rebuildBVH() {
+    public func buildAccelerationStructures() {
         self.tlas = TLAS(scene: self)
+    }
+
+    // TODO: in the future instead of straight up calling reform, queue it so one reform for a bunch of meshes instead
+    public func meshModelMatrixChangedBinding(mesh: Mesh) {
+        self.tlas?.reform()
+        //self.tlas?.build()
+        tlasReformed = true // To notify the RayTracer
+        
     }
 
     public func addAsset(_ asset: ObjectAsset) {
@@ -53,5 +62,7 @@ public class Scene: @unchecked Sendable {
         self.textures.append(contentsOf: newTextures)
         self.subMeshes.append(contentsOf: newSubMeshes)
         self.meshes.append(contentsOf: newMeshes)
+
+        for mesh in newMeshes { mesh.modelMatrixChangedBinding = meshModelMatrixChangedBinding }
     }
 }

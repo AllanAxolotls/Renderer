@@ -17,15 +17,20 @@ struct VSOut {
     float3 normal;
 };
 
+struct Uniforms {
+    float4x4 mvpMatrix;
+    float3x3 normalMatrix;
+};
+
 vertex VSOut vmain(
     const device Vertex* verts [[buffer(0)]],
-    constant float4x4& transform [[buffer(1)]],
+    const device Uniforms* uniforms [[buffer(1)]],
     uint vid [[vertex_id]]
 ) {
     VSOut out;
-    out.position = transform * float4(verts[vid].position, 1.0f);
+    out.position = uniforms->mvpMatrix * float4(verts[vid].position, 1.0f);
     out.uv = verts[vid].uv;
-    out.normal = verts[vid].normal;
+    out.normal = uniforms->normalMatrix * verts[vid].normal;
     return out;
 }
 

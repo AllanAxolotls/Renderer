@@ -16,7 +16,12 @@ public enum RenderMode {
     )
 }
 
-public struct Uniforms {
+public struct RasterizerUniforms {
+    public var mvpMatrix: simd_float4x4
+    public var normalMatrix: simd_float3x3
+}
+
+public struct RayTracerUniforms {
     let sampleIndex: Int32
     let fovScale: Float
     let cameraPosition: simd_float3

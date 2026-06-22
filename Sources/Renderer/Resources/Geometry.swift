@@ -26,7 +26,7 @@ public struct SubMesh { // Submeshes are essentially DrawCalls, every drawcall h
     public var meshIndex: Int32
 }
 
-public struct Mesh {
+public class Mesh {
     public var subMeshOffset: Int32
     public var subMeshCount: Int32
     public var faceOffset: Int32
@@ -35,40 +35,69 @@ public struct Mesh {
     public var vertexCount: Int32
 
     public var name: String = "Mesh"
-    public var pivot: simd_float3 = simd_float3(0, 0, 0) {
-        didSet { self.modelMatrix = calcModelMatrix() }
+    public var pivot: simd_float3 = simd_float3(0, 0, 0) {  didSet { self.modelMatrix = calcModelMatrix() } }
+    public var position: simd_float3 = simd_float3(0, 0, 0) { didSet { self.translationMatrix = calcTranslationMatrix(position) }  }
+    public var rotation: simd_float3 = simd_float3(0, 0, 0) {  didSet { self.rotationMatrix = calcRotationMatrix() } }
+    public var size: simd_float3 = simd_float3(1, 1, 1) { didSet { self.scaleMatrix = calcScaleMatrix() } }
+
+    private var translationMatrix: simd_float4x4 = matrix_identity_float4x4 { didSet { self.modelMatrix = calcModelMatrix() } }
+    private func calcTranslationMatrix(_ p: simd_float3) -> simd_float4x4 {
+        return simd_float4x4(columns: (
+            simd_float4(1, 0, 0, 0),
+            simd_float4(0, 1, 0, 0),
+            simd_float4(0, 0, 1, 0),
+            simd_float4(p.x, p.y, p.z, 1)
+        ))
     }
-    public var position: simd_float3 = simd_float3(0, 0, 0) {
-        didSet { self.modelMatrix = calcModelMatrix() }
+
+    private var rotationMatrix: simd_float4x4 = matrix_identity_float4x4 { didSet { self.modelMatrix = calcModelMatrix() } }
+    private func calcRotationMatrix() -> simd_float4x4 {
+        let rx = self.rotation.x * .pi / 180
+        let ry = self.rotation.y * .pi / 180
+        let rz = self.rotation.z * .pi / 180
+        let qx = simd_quatf(angle: rx, axis: simd_float3(1, 0, 0))
+        let qy = simd_quatf(angle: ry, axis: simd_float3(0, 1, 0))
+        let qz = simd_quatf(angle: rz, axis: simd_float3(0, 0, 1))
+        return simd_float4x4(qz * qy * qx)
     }
-    public var rotation: simd_float3 = simd_float3(0, 0, 0) {
-        didSet { self.modelMatrix = calcModelMatrix() }
+
+    private var scaleMatrix: simd_float4x4 = matrix_identity_float4x4 { didSet { self.modelMatrix = calcModelMatrix() } }
+    private func calcScaleMatrix() -> simd_float4x4 {
+        return simd_float4x4(columns: (
+            simd_float4(self.size.x, 0, 0, 0),
+            simd_float4(0, self.size.y, 0, 0),
+            simd_float4(0, 0, self.size.z, 0),
+            simd_float4(0, 0, 0, 1)
+        ))
     }
-    public var size: simd_float3 = simd_float3(1, 1, 1) {
-        didSet { self.modelMatrix = calcModelMatrix() }
-    }
-    public var modelMatrix: matrix_float4x4 = matrix_identity_float4x4 {
-        didSet {
-            (self.worldMinBounds, self.worldMaxBounds) = calcWorldBounds()
-            self.invModelMatrix = self.modelMatrix.inverse
-        }
-    }
-    public var invModelMatrix: matrix_float4x4 = matrix_identity_float4x4
-    public var localMinBounds: simd_float3 {
-        didSet { (self.worldMinBounds, self.worldMaxBounds) = calcWorldBounds() }
-    }
-    public var localMaxBounds: simd_float3 {
-        didSet { (self.worldMinBounds, self.worldMaxBounds) = calcWorldBounds() }
-    }
+
+    public var modelMatrixChangedBinding: ((Mesh) -> ())? = nil
+    public var modelMatrix: simd_float4x4 = matrix_identity_float4x4 { didSet {
+        (self.worldMinBounds, self.worldMaxBounds) = calcWorldBounds()
+        self.invModelMatrix = self.modelMatrix.inverse
+        let invModelMatrix3x3 = simd_float3x3(
+            simd_make_float3(invModelMatrix.columns.0),
+            simd_make_float3(invModelMatrix.columns.1),
+            simd_make_float3(invModelMatrix.columns.2),
+        )
+        self.normalMatrix = invModelMatrix3x3.transpose
+        if let changedBinding = modelMatrixChangedBinding { changedBinding(self) }
+    }}
+    public var invModelMatrix: simd_float4x4 = matrix_identity_float4x4
+    public var normalMatrix: simd_float3x3 = matrix_identity_float3x3
+    public var localMinBounds: simd_float3 { didSet { (self.worldMinBounds, self.worldMaxBounds) = calcWorldBounds() } }
+    public var localMaxBounds: simd_float3 { didSet { (self.worldMinBounds, self.worldMaxBounds) = calcWorldBounds() } }
     public var worldMinBounds: simd_float3
     public var worldMaxBounds: simd_float3
 
     init(
+        name: String, pivot: simd_float3,
         subMeshOffset: Int32, subMeshCount: Int32, 
         faceOffset: Int32, faceCount: Int32, 
         vertexOffset: Int32, vertexCount: Int32,
         localMinBounds: simd_float3, localMaxBounds: simd_float3
     ) {
+        self.name = name
         self.subMeshOffset = subMeshOffset
         self.subMeshCount = subMeshCount
         self.faceOffset = faceOffset
@@ -79,34 +108,12 @@ public struct Mesh {
         self.localMaxBounds = localMaxBounds
         self.worldMinBounds = self.localMinBounds
         self.worldMaxBounds = self.localMaxBounds
-
         (self.worldMinBounds, self.worldMaxBounds) = calcWorldBounds()
+        self.pivot = pivot // causes WorldBounds and Model Matrix and all other stuff to get calculated
     }
 
-    private func calcModelMatrix() -> matrix_float4x4 {
-        func translationMatrix(_ p: simd_float3) -> matrix_float4x4 {
-            return matrix_float4x4(columns: (
-                simd_float4(1, 0, 0, 0),
-                simd_float4(0, 1, 0, 0),
-                simd_float4(0, 0, 1, 0),
-                simd_float4(p.x, p.y, p.z, 1)
-            ))
-        }
-
-        let scaleMatrix = matrix_float4x4(columns: (
-            simd_float4(self.size.x, 0, 0, 0),
-            simd_float4(0, self.size.y, 0, 0),
-            simd_float4(0, 0, self.size.z, 0),
-            simd_float4(0, 0, 0, 1)
-        ))
-        let rx = rotation.x * .pi / 180
-        let ry = rotation.y * .pi / 180
-        let rz = rotation.z * .pi / 180
-        let qx = simd_quatf(angle: rx, axis: simd_float3(1, 0, 0))
-        let qy = simd_quatf(angle: ry, axis: simd_float3(0, 1, 0))
-        let qz = simd_quatf(angle: rz, axis: simd_float3(0, 0, 1))
-        let rotationMatrix = matrix_float4x4(qz * qy * qx)
-        return translationMatrix(self.position) * translationMatrix(self.pivot) * rotationMatrix * scaleMatrix * translationMatrix(-self.pivot)
+    private func calcModelMatrix() -> simd_float4x4 {
+        return translationMatrix * calcTranslationMatrix(self.pivot) * rotationMatrix * scaleMatrix * calcTranslationMatrix(-self.pivot)
     }
 
     private func calcWorldBounds() -> (min: simd_float3, max: simd_float3) {
@@ -182,51 +189,5 @@ public class Material {
         self.map_Ks = map_Ks
         self.map_Bump = map_Bump
     }
-}
-
-public class Triangle {
-    var vertices: [Vertex]
-    var subMesh: SubMesh
-
-    init(vertices: [Vertex], subMesh: SubMesh) {
-        self.vertices = vertices
-        self.subMesh = subMesh
-    }
-}
-
-public class SubMesh {
-    var triangles: [Triangle]
-    var material: Material?
-
-    init(triangles: [Triangle], material: Material?) {
-        self.triangles = triangles
-        self.material = material
-    }
-}
-
-public final class Mesh {
-    var name: String
-    var position: simd_float3
-    var rotation: simd_float3 // Change to quaternion later
-    var size: simd_float3
-    var subMeshes: [SubMesh]
-    
-    init(
-        name: String, 
-        position: simd_float3 = simd_float3(0, 0, 0), 
-        rotation: simd_float3 = simd_float3(0, 0, 0), 
-        size: simd_float3 = simd_float3(1, 1, 1), 
-        subMeshes: [SubMesh]
-    ) {
-        self.position = position
-        self.rotation = rotation
-        self.size = size
-        self.subMeshes = subMeshes
-        self.name = name
-    }
-}
-
-public struct Model {
-    var children: [Mesh]
 }
 */

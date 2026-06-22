@@ -170,7 +170,7 @@ final class RayTracerRenderer: Renderer {
         self.pipelineBuilder = PipelineBuilder(device: device)
         (self.pipeline, argumentBuffer) = self.pipelineBuilder.makeRayTracePipeline(textures: scene.textures)
 
-        var uniforms = Uniforms(
+        var uniforms = RayTracerUniforms(
             sampleIndex: sampleIndex,
             fovScale: tan(FOVRad * 0.5), 
             cameraPosition: scene.camera.position,
@@ -179,24 +179,7 @@ final class RayTracerRenderer: Renderer {
             cameraRight: scene.camera.right
         )
 
-        var facesToGPU: [RayTraceTriangleGPU] = []
-        func faceToGPU(_ face: Face) -> RayTraceTriangleGPU {
-            let subMesh = scene.subMeshes[Int(face.subMeshIndex)]
-            let vertex1 = scene.vertices[Int(face.vertexIndices.x)]
-            let vertex2 = scene.vertices[Int(face.vertexIndices.y)]
-            let vertex3 = scene.vertices[Int(face.vertexIndices.z)]
-            let edge1 = vertex2.position - vertex1.position
-            let edge2 = vertex3.position - vertex1.position
-            return RayTraceTriangleGPU(
-                vertex1: vertex1, vertex2: vertex2, vertex3: vertex3, 
-                edge1: edge1, edge2: edge2,
-                normal: simd_normalize(simd_cross(edge1, edge2)),
-                materialIndex: subMesh.materialIndex
-            )
-        }
-        for face in scene.faces { facesToGPU.append(faceToGPU(face)) }
-
-        uniformsBuffer = device.makeBuffer(bytes: &uniforms, length: MemoryLayout<Uniforms>.stride)
+        uniformsBuffer = device.makeBuffer(bytes: &uniforms, length: MemoryLayout<RayTracerUniforms>.stride)
 
         scene.materials.withUnsafeBufferPointer { ptr in 
             self.materialBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<Material>.stride * scene.materials.count)
@@ -222,7 +205,29 @@ final class RayTracerRenderer: Renderer {
         lastCameraUp = simd_float3(repeating: .infinity)
     }
 
+    public func updateGPUBuffers() {
+        // only works if NO new instances are added
+        // 1. Update the instance buffer (contains your modified model matrices)
+        if let instanceBuffer = self.tlasInstanceBuffer {
+            scene.tlas!.tlasInstances.withUnsafeBufferPointer { ptr in
+                memcpy(instanceBuffer.contents(), ptr.baseAddress!, MemoryLayout<TLASInstance>.stride * scene.tlas!.tlasInstances.count)
+            }
+        }
+        
+        // 2. Update the TLAS nodes buffer (contains your modified bounding boxes)
+        if let tlasNodeBuffer = self.tlasNodeBuffer {
+            scene.tlas!.tlasNodes.withUnsafeBufferPointer { ptr in
+                memcpy(tlasNodeBuffer.contents(), ptr.baseAddress!, MemoryLayout<TLASNode>.stride * scene.tlas!.tlasNodes.count)
+            }
+        }
+    }
+
     func draw(view: MTKView, commandQueue: MTLCommandQueue) {
+        if scene.tlasReformed {
+            scene.tlasReformed = false
+            invalidateAccumulation()
+            updateGPUBuffers()
+        }
         autoreleasepool {
             if raytraceOnCPU {
                 print("CPU drawing is unavailable right now")
@@ -264,7 +269,7 @@ final class RayTracerRenderer: Renderer {
                 let commandBuffer = commandQueue.makeCommandBuffer()!
                 let encoder = commandBuffer.makeComputeCommandEncoder()!
 
-                var uniforms = Uniforms(
+                var uniforms = RayTracerUniforms(
                     sampleIndex: sampleIndex,
                     fovScale: tan(FOVRad * 0.5), 
                     cameraPosition: scene.camera.position,
@@ -272,7 +277,7 @@ final class RayTracerRenderer: Renderer {
                     cameraUp: scene.camera.up,
                     cameraRight: scene.camera.right
                 )
-                memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.stride)
+                memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<RayTracerUniforms>.stride)
 
                 encoder.setComputePipelineState(self.pipeline)
                 encoder.setTexture(drawable.texture, index: 0)

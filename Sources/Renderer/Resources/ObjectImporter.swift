@@ -274,15 +274,13 @@ public class ObjectImporter {
                 maxBounds = simd.max(maxBounds, vertex.position)
             }
 
-            var mesh = Mesh(
+            let mesh = Mesh(
+                name: currentMeshName ?? "Mesh", pivot: (minBounds + maxBounds) * 0.5, 
                 subMeshOffset: currentSubMeshOffset, subMeshCount: currentSubMeshCount,
                 faceOffset: currentMeshFaceOffset, faceCount: currentMeshFaceCount,
                 vertexOffset: currentMeshVertexOffset, vertexCount: currentMeshVertexCount,
                 localMinBounds: minBounds, localMaxBounds: maxBounds
             )
-
-            mesh.name = currentMeshName ?? "Mesh"
-            mesh.pivot = (minBounds + maxBounds) * 0.5
             meshes.append(mesh)
 
             currentSubMeshOffset += currentSubMeshCount

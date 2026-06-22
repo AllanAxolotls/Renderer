@@ -424,23 +424,44 @@ Tenminste werkt de rest wel weer. Deze was makkelijker te fixen: de argument buf
 textures vast hield die wordt als enige gemaakt in de Pipeline builder en ik was vergeten
 de index van de argument buffer te verplaatsen van 4 naar 6 omdat er nieuwe buffers bij
 zijn gekomen.
-Eindelijk een BLAS en TLAS wat betekent dat ik nu transformaties kan doen op objecten
+
+Eindelijk een BLAS en TLAS gemaakt wat betekent dat ik nu transformaties kan doen op objecten
 zonder de BLAS te hoeven herbouwen, alleen de TLAS in dat geval, wat veel beter is
 Tijdens het proberen te fixen van de bugs kwam ChatGPT met het idee om mijn BVH ver te upgraden door "SAH" (Surface Area Heuristic)
 te gebruiken i.p.v. Median Split, waarbij ik nu precies het midden zoek
 elke keer van een aantal driehoeken en zo de ruimte verdeel.
 Ik ga later misschien SAH proberen toe te voegen want het wordt al complex genoeg. Eerst wat meer echte raytrace dingen toevoegen zoals: Doorzichtige objecten
 en objecten die licht emitteren.
-Transparantie (dissolve) toevoegen was oprecht een piece of cake. Slechts een kans maken dat de lichtstraal door de driehoek heen valt afhankelijk van de dissolve is genoeg
+Transparantie (dissolve) toevoegen was oprecht een piece of cake. Slechts een kans maken dat de lichtstraal door de driehoek heen valt afhankelijk van de dissolve is genoeg.
+Dit proces het "Stochastic Dissolve Check" waarbij een "Stochastic" gewoon een kans is.
 ik ben erg blij met het resultaat. Morgen werken aan emissive materials.
 De scene Importer is ook al een stuk meer polished, fields zijn nu optioneel, en materials kunnen ge-overwrite worden dus fijn voor testen ook.
 Er is nog wel erg veel noise zichtbaar, ik moet een keer voor de lol 512 of zelfs 1024 samples testen en kijken of het echt weg gaat. 
 
 
 
+22-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 10:00-12:13 (duur: 2 uur, 13 min. ) ]
+TODO: normalMatrix goed toevoegen, occlusion culling en viewport culling bekijken
+ik heb uniforms toegevoegd aan de rasterizer zodat zowel de MVP matrix als de normal Matrix kan worden gestuurd naar de GPU
+Ik wil mijn code refactoren: matrix_float... datatypes replacen met simd_float... voor consistency
+Ik heb raycasting weer toegevoegd aan de CPU ook, dus later ga ik weer de CPU raytracer maken met alle functies die de GPU heeft om coole vergelijkingen te doen
 
+Ik probeer nu rotatie toe te voegen aan het object terwijl de raytracer bezig is, daarvoor moet de TLAS gereformed worden en daar ben ik nu mee bezig
+er waren een paar bugs: de TLAS data werd eerst niet gereplicate. (Vergat de GPU Buffers opnieuw te overwriten met nieuwe data)
+en nu vergat ik dat de sampling moet ge-invalidate worden in het geval van een Scene Change. Nu heb ik een bug waar iets met de bounding box fout gaat
+waardoor de objecten worden geclipped op manierend ie niet horen
 
-
+[ 16:30- (duur: ) ]
+bug gefixt, ik indexte ergens perongeluk verkeerd waardoor volgorde helemaal fout ging. Nu is er eindelijk real-time rotatie in RayTracing. Alle samples worden gelijk 
+geinvalidate dus het is niet het mooiste. 
+Nu heb ik nog een nieuwe techniek gevonden: I.p.v. full screen invalidation wanneer iets beweegt, kan je ook per pixel invalidation doen. Dit is nauwelijks performance
+heavier, en kan zelfs beter zijn!. Er is wel meer memory voor nodig; je moet van de vorige frame voor elke mesh de prevModelmatrix hebben en ook van de camera de prevViewMatrix
+daarma kan je dan berekenen wanneer de vorige pixel zat en waar die nu zit en daarna blend je ze als het niet heftig bewogen is, anders invalidate je het en wordt die pixel opnieuw
+gesampeld.
+Ik wil ook Blue Noise Sampling proberen
+Daarnaast Edge-Perserving Bilateral Filter voor denoising in de toekomst toevoegen
 
 
 =============================================================================================================================================
@@ -448,5 +469,3 @@ Er is nog wel erg veel noise zichtbaar, ik moet een keer voor de lol 512 of zelf
 Notes voor mezelf:
 wat kan misschien theoretisch beter: 
 * per tile ipv per pixels cast rays van de hoeken van de tile,  alle AABBs daar tussen alleen bekijken met de BHV traversal, dus nog een stap van eliminatie per tile
-* bij per frame raytracing, laat de GPU slapen als er geen camera movement is en er geen andere dingen gebueren
-* Check of de BHV traverse diepte niet groter is dan 64 anders gaat er iets fout in de shader code, en check of 64 een groot genoeg getal is of zelfs te groot

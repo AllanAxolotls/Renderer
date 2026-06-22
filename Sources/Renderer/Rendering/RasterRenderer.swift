@@ -11,12 +11,12 @@ import MetalKit
 
     var vertexBuffer: MTLBuffer!
     var indexBuffer: MTLBuffer!
-    var matrixBuffer: MTLBuffer!
+    var uniformsBuffer: MTLBuffer!
 
     var opaqueDepthState: MTLDepthStencilState!
     var transparentDepthState: MTLDepthStencilState!
 
-    var projectionMatrix = matrix_float4x4()
+    var projectionMatrix = simd_float4x4()
 
     init(device: MTLDevice, scene: Scene) {
         self.scene = scene
@@ -31,7 +31,7 @@ import MetalKit
         var indices: [UInt32] = []
         for face in scene.faces { indices.append(contentsOf: [face.vertexIndices.x, face.vertexIndices.y, face.vertexIndices.z]) }
         indexBuffer = device.makeBuffer(bytes: indices, length: MemoryLayout<UInt32>.stride * indices.count)
-        matrixBuffer = device.makeBuffer(length: MemoryLayout<matrix_float4x4>.stride)
+        uniformsBuffer = device.makeBuffer(length: MemoryLayout<RasterizerUniforms>.stride)
 
         // Depth state for opaque objects
         let opaqueDepthDesc = MTLDepthStencilDescriptor()
@@ -56,7 +56,7 @@ import MetalKit
         let yScale = 1 / tan(FOVRad * 0.5)
         let xScale = yScale / aspect
 
-        projectionMatrix = matrix_float4x4(columns: (
+        projectionMatrix = simd_float4x4(columns: (
             simd_float4(xScale, 0, 0, 0),
             simd_float4(0, yScale, 0, 0),
             simd_float4(0, 0, zFar / (zFar - zNear), 1),
@@ -75,7 +75,7 @@ import MetalKit
         let U = camera.up
         let F = camera.forward
 
-        let viewMatrix = matrix_float4x4(columns: (
+        let viewMatrix = simd_float4x4(columns: (
             simd_float4(R.x, U.x, F.x, 0),
             simd_float4(R.y, U.y, F.y, 0),
             simd_float4(R.z, U.z, F.z, 0),
@@ -86,14 +86,15 @@ import MetalKit
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentSamplerState(sampler, index: 0)
         encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        encoder.setVertexBuffer(matrixBuffer, offset: 0, index: 1)
+        encoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         encoder.setCullMode(MTLCullMode.back)
         encoder.setFrontFacing(MTLWinding.clockwise)
 
         func drawSubMesh(subMesh: SubMesh) {
             let mesh = scene.meshes[Int(subMesh.meshIndex)]
-            var MVPMatrix = projectionMatrix * viewMatrix * mesh.modelMatrix
-            encoder.setVertexBytes(&MVPMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 1)
+            let mvpMatrix = projectionMatrix * viewMatrix * mesh.modelMatrix
+            var uniforms = RasterizerUniforms(mvpMatrix: mvpMatrix, normalMatrix: mesh.normalMatrix)
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<RasterizerUniforms>.stride, index: 1)
 
             let indexedMaterial = scene.materials[Int(subMesh.materialIndex)]
             encoder.setFragmentTexture(scene.textures[Int(indexedMaterial.ambientTextureIndex)], index: 0)

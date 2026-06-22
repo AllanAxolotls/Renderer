@@ -75,7 +75,6 @@ struct RaycastResult {
     float3 hit;
     Face hitFace;
     float3 normal;
-    int leafFaceIndex;
     float distance;
     float3 barycentric;
 };
@@ -121,21 +120,21 @@ RaycastResult intersectsFace(float3 origin, float3 direction, Face face) {
 
     float3 edge1 = face.edge1;
     float3 edge2 = face.edge2;
-    float3 direction_cross_edge2 = cross(direction, edge2);
-    float det = dot(edge1, direction_cross_edge2);
+    float3 directionCrossEdge2 = cross(direction, edge2);
+    float det = dot(edge1, directionCrossEdge2);
     if (metal::abs(det) < epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
-    float inv_det = 1.0 / det;
+    float invDet = 1.0 / det;
     float3 vertex1 = face.vertex1.position;
     float3 s = origin - vertex1;
-    float u = inv_det * dot(s, direction_cross_edge2);
+    float u = invDet * dot(s, directionCrossEdge2);
     if (u < -epsilon || u - 1 > epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
-    float3 s_cross_edge1 = cross(s, edge1);
-    float v = inv_det * dot(direction, s_cross_edge1);
+    float3 sCrossEdge1 = cross(s, edge1);
+    float v = invDet * dot(direction, sCrossEdge1);
     if (v < -epsilon || u + v - 1 > epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
-    float t = inv_det * dot(edge2, s_cross_edge1);
+    float t = invDet * dot(edge2, sCrossEdge1);
     if (t > epsilon) { // && t <= 1) { // if t > 1 then ray is longer than segment length
         return RaycastResult{
             .hit = origin + direction * t, 
@@ -167,7 +166,6 @@ RaycastResult traverseBLAS(
                     RaycastResult result = intersectsFace(origin, look, face);
                     if (result.distance < closestResult.distance) {
                         closestResult = result;
-                        closestResult.leafFaceIndex = i;
                     }
                 }
                 nodeIndex = node.escapeIndex;
@@ -253,6 +251,9 @@ float2 random2(float seed) {
 kernel void raytrace(
     texture2d<half, access::write> output [[texture(0)]], // Display Output
     texture2d<float, access::read_write> accumTexture [[texture(1)]], // Light passes
+    //texture2d<float, access::sample> prevAccumTexture [[texture(2)]], // Last frame color
+    //texture2d<float, access::sample> prevDepthInstanceTexture [[texture(3)]], // Last frame validation
+    //texture2d<float, access::write> currentDepthInstanceTexture [[texture(4)]], //  Save for next frame
     sampler samp [[sampler(0)]],
     
     device Uniforms* uniforms [[buffer(0)]],
@@ -304,13 +305,11 @@ kernel void raytrace(
 
         Material material = materials[result.hitFace.materialIndex];
 
-        // Stochastic Dissolve Check
         seed += float(bounce) * 79.19;
-        if (random(seed) > material.dissolve) {
+        if (random(seed) > material.dissolve) { // Stochastic Dissolve Check
             // To avoid intersecting the same triangle, nudge the ray a bit
             rayOrigin = result.hit + rayDirection * 0.001f;
-            // Force the bounce loop to continue using the exact same direction, bypassing all lighting math, albedo sampling, and throughput loss.
-            continue; 
+            continue; // Force the bounce loop to continue using the exact same direction, bypassing all lighting math, albedo sampling, and throughput loss.
         }
 
         float3 albedo;
