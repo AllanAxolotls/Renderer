@@ -86,13 +86,13 @@ private func raycastPixel(
     //let subMesh: SubMesh = scene.subMeshes[Int(result.hitFace.subMeshIndex)]
     let material: Material = scene.materials[Int(result.hitFace.materialIndex)]
     
-    //let map_Ka: MTLTexture? = material?.ambientTexture
+    //let map_Ka: MTLTexture? = material?.diffuseTexture
     let textureColor: simd_float4? = nil// map_Ka?.sample(u: interpolatedUV.x, v: interpolatedUV.y)
-    let Ka = material.ambientColor
+    let Ka = material.diffuseColor
     let materialColor: simd_float4 = simd_float4(Ka.x * 255, Ka.y * 255, Ka.z * 255, 255)
 
-    let ambientColor: simd_float4 = textureColor ?? materialColor
-    return simd_float4(ambientColor.x * lightIntensity, ambientColor.y * lightIntensity, ambientColor.z * lightIntensity, ambientColor.w)
+    let diffuseColor: simd_float4 = textureColor ?? materialColor
+    return simd_float4(diffuseColor.x * lightIntensity, diffuseColor.y * lightIntensity, diffuseColor.z * lightIntensity, diffuseColor.w)
 }
 
 // MARK: - Raytracer
@@ -157,6 +157,10 @@ final class RayTracerRenderer: Renderer {
     var argumentBuffer: MTLBuffer!
 
     var accumTexture: MTLTexture? = nil
+    //var prevAccumTexture: MTLTexture? = nil
+    //var prevDepthInstanceTexture: MTLTexture? = nil
+    //var currentDepthInstanceTexture: MTLTexture? = nil
+
     var lastCameraPosition: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
     var lastCameraForward: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
     var lastCameraUp: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
@@ -207,27 +211,20 @@ final class RayTracerRenderer: Renderer {
 
     public func updateGPUBuffers() {
         // only works if NO new instances are added
-        // 1. Update the instance buffer (contains your modified model matrices)
         if let instanceBuffer = self.tlasInstanceBuffer {
-            scene.tlas!.tlasInstances.withUnsafeBufferPointer { ptr in
+            let _ = scene.tlas!.tlasInstances.withUnsafeBufferPointer { ptr in
                 memcpy(instanceBuffer.contents(), ptr.baseAddress!, MemoryLayout<TLASInstance>.stride * scene.tlas!.tlasInstances.count)
             }
         }
         
-        // 2. Update the TLAS nodes buffer (contains your modified bounding boxes)
         if let tlasNodeBuffer = self.tlasNodeBuffer {
-            scene.tlas!.tlasNodes.withUnsafeBufferPointer { ptr in
+            let _ = scene.tlas!.tlasNodes.withUnsafeBufferPointer { ptr in
                 memcpy(tlasNodeBuffer.contents(), ptr.baseAddress!, MemoryLayout<TLASNode>.stride * scene.tlas!.tlasNodes.count)
             }
         }
     }
 
     func draw(view: MTKView, commandQueue: MTLCommandQueue) {
-        if scene.tlasReformed {
-            scene.tlasReformed = false
-            invalidateAccumulation()
-            updateGPUBuffers()
-        }
         autoreleasepool {
             if raytraceOnCPU {
                 print("CPU drawing is unavailable right now")
@@ -236,7 +233,6 @@ final class RayTracerRenderer: Renderer {
             } else { // GPU
                 guard let drawable = view.currentDrawable else { return }
                 
-                //TODO: In the future 'sceneChanged' will be required aswell
                 func posNearlyEq(_ a: simd_float3, _ b: simd_float3) -> Bool { return simd_length(a - b) < 0.001 }
                 var cameraChanged: Bool = false
                 if !posNearlyEq(scene.camera.position, lastCameraPosition) || !posNearlyEq(scene.camera.forward, lastCameraForward) || !posNearlyEq(scene.camera.up, lastCameraUp) {
@@ -252,8 +248,14 @@ final class RayTracerRenderer: Renderer {
                     lastHeight = drawable.texture.height
                     print("Window Resized, Sample Invalidated")
                 }
+                let sceneChanged: Bool = scene.tlasReformed
+                if sceneChanged {
+                    updateGPUBuffers()
+                    scene.tlasReformed = false
+                    print("Scene Changed, Sample Invalidated")
+                }
 
-                sampleIndex = (cameraChanged || windowResolutionChanged) ? 0 : sampleIndex + 1
+                sampleIndex = (cameraChanged || windowResolutionChanged || sceneChanged) ? 0 : sampleIndex + 1
                 if sampleIndex == 0 {
                     let accumTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: drawable.texture.width, height: drawable.texture.height, mipmapped: false)
                     accumTextureDesc.usage = [.shaderWrite, .shaderRead]
@@ -306,7 +308,7 @@ final class RayTracerRenderer: Renderer {
 
                 // If save, save drawable texture as png to desktop when maxSamples reached and exit program
                 if saveAndExitOnGPU && sampleIndex >= maxSamples {
-                    commandBuffer.waitUntilCompleted()
+                    //commandBuffer.waitUntilCompleted()
                     let output = drawable.texture
                     let bytesPerPixel = 4
                     let bytesPerRow = output.width * bytesPerPixel

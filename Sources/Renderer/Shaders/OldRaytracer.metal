@@ -38,8 +38,8 @@ struct Face {
 };
 
 struct Material {
-    float3 ambientColor;
-    int ambientTextureIndex; // if -1 then no texture
+    float3 diffuseColor;
+    int diffuseTextureIndex; // if -1 then no texture
     float dissolve;
 };
 
@@ -244,14 +244,14 @@ kernel void raytrace(
         Material material = materials[result.hitFace.materialIndex];
         float3 albedo;
 
-        if (material.ambientTextureIndex == -1) {
-            albedo = material.ambientColor.xyz;
+        if (material.diffuseTextureIndex == -1) {
+            albedo = material.diffuseColor.xyz;
         } else {
-            texture2d<float> tex = collection.textures[material.ambientTextureIndex];
+            texture2d<float> tex = collection.textures[material.diffuseTextureIndex];
             // Interpolated UV
             float2 uv = result.barycentric.x * result.hitFace.vertex1.uv + result.barycentric.y * result.hitFace.vertex2.uv + result.barycentric.z * result.hitFace.vertex3.uv;
             float4 texColor = tex.sample(samp, uv);
-            albedo = mix(material.ambientColor.xyz, texColor.xyz, texColor.w); // Alpha Blend Texture with Material Color
+            albedo = mix(material.diffuseColor.xyz, texColor.xyz, texColor.w); // Alpha Blend Texture with Material Color
         }
 
         // Interpolated Normal

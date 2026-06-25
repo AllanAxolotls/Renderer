@@ -27,7 +27,7 @@ private struct Vec3: Codable {
 private struct SceneMetaData: Codable {
     let name: String?
     let version: String?
-    let ambientColor: Vec3?
+    let diffuseColor: Vec3?
 }
 
 private struct SceneAsset: Codable {
@@ -44,7 +44,7 @@ private struct SceneAssetChild: Codable {
 }
 
 private struct SceneAssetMaterial: Codable {
-    let ambientColor: Vec3?
+    let diffuseColor: Vec3?
     let dissolve: Float?
 }
 
@@ -84,7 +84,7 @@ public func importScene(filePath: String, objectImporter: ObjectImporter) -> Sce
             for index in object.meshes.indices {
                 if object.meshes[index].name != child.name { continue }
                 if let material = child.material {
-                    if let ambientColor = material.ambientColor?.value { object.materials[index].ambientColor = ambientColor }
+                    if let diffuseColor = material.diffuseColor?.value { object.materials[index].diffuseColor = diffuseColor }
                     if let dissolve = material.dissolve { object.materials[index].dissolve = dissolve }
                 }
                 if let posValue = child.position?.value { object.meshes[index].position = posValue }

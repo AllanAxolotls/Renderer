@@ -10,8 +10,8 @@ private let printResolves: Bool = true
 
 // Unused, should be used for material merging in the future
 private func areMaterialsEqual(materialA: Material, materialB: Material) -> Bool {
-    if !simd_equal(materialA.ambientColor, materialB.ambientColor) { return false }
-    if materialA.ambientTextureIndex != materialB.ambientTextureIndex { return false }
+    if !simd_equal(materialA.diffuseColor, materialB.diffuseColor) { return false }
+    if materialA.diffuseTextureIndex != materialB.diffuseTextureIndex { return false }
     if materialA.dissolve != materialB.dissolve { return false }
     return true
 }
@@ -126,9 +126,6 @@ public class MaterialImporter {
         textureImporter = TextureImporter(device: device)
     }
 
-    // Tracks all imported materials
-    //var importedMaterials = [Material]()
-
     public func importMaterial(filePath: String) -> (materials: [Material], materialNameIndices: [String : Int32]) {
         var materials: [Material] = []
         var materialNameIndices: [String : Int32] = [:]
@@ -140,15 +137,15 @@ public class MaterialImporter {
 
         var materialIndex: Int32 = -1
         var currentMaterial = Material()
-        var currentMaterialHasTexture: Bool = false
+        //var currentMaterialHasDiffuseTexture: Bool = false
 
         func pushMaterial() {
-            if !currentMaterialHasTexture {
-                (_, currentMaterial.ambientTextureIndex) = self.textureImporter.getColorTexture(color: currentMaterial.ambientColor)
-            }
+            //if !currentMaterialHasDiffuseTexture {
+            //    (_, currentMaterial.diffuseTextureIndex) = self.textureImporter.getColorTexture(color: currentMaterial.diffuseColor)
+            //}
             materials.append(currentMaterial)
             currentMaterial = Material()
-            currentMaterialHasTexture = false
+            //currentMaterialHasDiffuseTexture = false
         }
 
         guard let contents = try? String(contentsOfFile: resolvedFilePath, encoding: .utf8) else {
@@ -166,16 +163,31 @@ public class MaterialImporter {
             switch command {
             case "#": continue parseLine
             case "Ka": currentMaterial.ambientColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
+            case "Kd": currentMaterial.diffuseColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
+            case "Ks": currentMaterial.specularColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
+            case "Ke": currentMaterial.emissionColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
+            case "map_Ka": (_, currentMaterial.ambientTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+            case "map_Kd":
+                (_, currentMaterial.diffuseTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+                //currentMaterialHasDiffuseTexture = true
+            case "map_Ks": (_, currentMaterial.specularTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+            case "map_d": (_, currentMaterial.dissolveTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+            case "map_Bump": (_, currentMaterial.bumpTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+            case "illum": currentMaterial.illuminationModel = Int32(tokens[1])!
             case "d": currentMaterial.dissolve = Float(tokens[1])!
-            case "map_Ka":
-                (_, currentMaterial.ambientTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
-                currentMaterialHasTexture = true
+            case "Tr": currentMaterial.dissolve = 1.0 - Float(tokens[1])!
+            case "Ns": currentMaterial.specularExponent = Float(tokens[1])!
+            case "Ni": currentMaterial.refractiveIndex = Float(tokens[1])!
+            // case "sharpness":
+            // case "Tf":
+            // case "refl":
+            // case "disp":
+            // case "decal":
             case "newmtl":
-                if materialIndex != -1 {
-                    pushMaterial()
-                }
+                if materialIndex != -1 { pushMaterial() }
                 materialIndex += 1
                 materialNameIndices[tokens[1]] = materialIndex
+                print("\(tokens[1]) : \(materialIndex)")
             default: continue parseLine
             }
         }

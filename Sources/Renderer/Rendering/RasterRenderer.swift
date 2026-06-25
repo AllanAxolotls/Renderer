@@ -96,10 +96,9 @@ import MetalKit
             var uniforms = RasterizerUniforms(mvpMatrix: mvpMatrix, normalMatrix: mesh.normalMatrix)
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<RasterizerUniforms>.stride, index: 1)
 
-            let indexedMaterial = scene.materials[Int(subMesh.materialIndex)]
-            encoder.setFragmentTexture(scene.textures[Int(indexedMaterial.ambientTextureIndex)], index: 0)
-            var material = MaterialGPU(dissolve: indexedMaterial.dissolve)
-            encoder.setFragmentBytes(&material, length: MemoryLayout<MaterialGPU>.stride, index: 2)
+            var indexedMaterial = scene.materials[Int(subMesh.materialIndex)]
+            encoder.setFragmentTexture(scene.textures[indexedMaterial.diffuseTextureIndex == -1 ? 0 : Int(indexedMaterial.diffuseTextureIndex)], index: 0)
+            encoder.setFragmentBytes(&indexedMaterial, length: MemoryLayout<Material>.stride, index: 2)
             let indexCount = 3 * Int(subMesh.faceCount)
             let indexBufferOffset = 3 * Int(subMesh.faceOffset) * MemoryLayout<UInt32>.stride
             encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: MTLIndexType.uint32, indexBuffer: indexBuffer, indexBufferOffset: indexBufferOffset)

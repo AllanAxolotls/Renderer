@@ -453,7 +453,7 @@ er waren een paar bugs: de TLAS data werd eerst niet gereplicate. (Vergat de GPU
 en nu vergat ik dat de sampling moet ge-invalidate worden in het geval van een Scene Change. Nu heb ik een bug waar iets met de bounding box fout gaat
 waardoor de objecten worden geclipped op manierend ie niet horen
 
-[ 16:30- (duur: ) ]
+[ 16:30-17:30 (duur: 1 uur ) ]
 bug gefixt, ik indexte ergens perongeluk verkeerd waardoor volgorde helemaal fout ging. Nu is er eindelijk real-time rotatie in RayTracing. Alle samples worden gelijk 
 geinvalidate dus het is niet het mooiste. 
 Nu heb ik nog een nieuwe techniek gevonden: I.p.v. full screen invalidation wanneer iets beweegt, kan je ook per pixel invalidation doen. Dit is nauwelijks performance
@@ -462,6 +462,45 @@ daarma kan je dan berekenen wanneer de vorige pixel zat en waar die nu zit en da
 gesampeld.
 Ik wil ook Blue Noise Sampling proberen
 Daarnaast Edge-Perserving Bilateral Filter voor denoising in de toekomst toevoegen
+
+[ 21:20-23:24 (duur: 2 uur, 4 min. ) ]
+Ik probeer alpha mask cutout te maken: bij textures waar pixel alphas laag of 0 zijn hoort de raytracer dat niet te tellen als een hit (het is lucht al is het qua mathematiek een Hit)
+blijkbaar is er een property voor in MTL: map_d die dit aanzet. Ik moet dus materials gewoon verbeteren.
+Er is zo een rare bug, ik weet niet of het aan de .obj en .mtl file ligt maar 1 van de plant textures werkt niet in de Raytracer en de ander wel 
+ik heb het nogsteeds niet gefixt, morgen ga ik echt beginnen aan materials meer compleet maken zoals in Blender
+
+
+
+23-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:45-10:00 (duur: 1 uur, 15 min. ) ]
+Een LightPipeline.txt toegevoegd
+Wat termen verzameld voor theoretisch kader
+
+
+
+25-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:45-10:00 (duur: 1 uur, 15 min. ) ]
+Start aan theoretisch kader
+Inlezen met BVH2 vs BVH4 vs BVH8, BVH4 is het beste voor mijn Intel GPU
+SAH is het best voor static scenes, morton codes (LBVH) is het best voor dynamic scenes
+morton codes zijn 2+ keer slomer dan SAH in static scenes: Ik kies voor nu
+voor SAH omdat dynamic scenes niet even belangrijk zijn als static scenes
+De workflow voor een BVH4 in dat geval: Bouw een BVH2 met SAH en maak daarna
+die binary tree op zo een manier plat dat elke branch 4 nodes heeft.
+Maar wat is SAH (Surface Area Heuristic)?
+Dit is het principe:
+De kans dat een ray een face raakt is evenredig met het oppervlakte van die face.
+Het oppervlakte wordt zo berekend: 
+    // Surface Area = 2 * (w*h + h*d + w*d)
+    // min en max zijn de min en max bounds coordinaten van de driehoek
+    Float3 d = max - min;
+    surfaceArea = 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
+
+
+
+
 
 
 =============================================================================================================================================

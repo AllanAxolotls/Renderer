@@ -35,6 +35,7 @@ final class PipelineBuilder {
         let argumentEncoder = function.makeArgumentEncoder(bufferIndex: 6)
 
         let textureCount = textures.count
+        print("Texture Count: \(textureCount)")
         let bufferLength = argumentEncoder.encodedLength + (textureCount * MemoryLayout<UInt64>.size)
         let argumentBuffer = device.makeBuffer(length: bufferLength, options: [])!
         argumentEncoder.setArgumentBuffer(argumentBuffer, offset: 0)

@@ -39,8 +39,3 @@ public struct RayTraceTriangleGPU {
     public var normal: simd_float3
     public var materialIndex: Int32
 }
-
-// For Rasterization
-public struct MaterialGPU {
-    var dissolve: Float
-}

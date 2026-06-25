@@ -5,7 +5,7 @@ constant float epsilon = 1e-6;
 constant float3 horizonColor = float3(207.0/255.0, 219.0/255.0, 230.0/255.0);
 constant float3 zenithColor = float3(60.0/255.0, 138.0/255.0, 201.0/255.0);
 constant float skyIntensity = 4.0;
-constant float3 sunDirection = float3(0.0, 1.0, 0.0); // Note: the direction is inverted, technically it should be: -sunDirection
+constant float3 sunDirection = float3(1.0, 0, 0.0); // Note: the direction is inverted, technically it should be: -sunDirection
 constant float3 invSunDirection = 1.0 / sunDirection;
 constant float3 sunColor = float3(10.0, 9.5, 8.5) * 0.5;
 constant float sunIntensity = 256.0;
@@ -38,9 +38,18 @@ struct Face {
 
 struct Material {
     float3 ambientColor;
-    int ambientTextureIndex; // -1 = no texture
-    //float emissive;
+    float3 diffuseColor;
+    float3 specularColor;
+    float3 emissionColor;
+    int ambientTextureIndex;
+    int diffuseTextureIndex; // -1 = no texture
+    int specularTextureIndex;
+    int dissolveTextureIndex;
+    int bumpTextureIndex;
+    int illuminationModel;
     float dissolve;
+    float specularExponent;
+    float refractiveIndex;
 };
 
 struct TextureCollection {
@@ -73,10 +82,11 @@ struct TLASNode {
 
 struct RaycastResult {
     float3 hit;
-    Face hitFace;
     float3 normal;
     float distance;
     float3 barycentric;
+    int faceIndex;
+    int instanceIndex;
 };
 
 bool intersectsAABB(float3 origin, float3 invDirection, float3 min, float3 max) {
@@ -122,7 +132,7 @@ RaycastResult intersectsFace(float3 origin, float3 direction, Face face) {
     float3 edge2 = face.edge2;
     float3 directionCrossEdge2 = cross(direction, edge2);
     float det = dot(edge1, directionCrossEdge2);
-    if (metal::abs(det) < epsilon) { return RaycastResult{ .distance = INFINITY, }; }
+    if (abs(det) < epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
     float invDet = 1.0 / det;
     float3 vertex1 = face.vertex1.position;
@@ -138,10 +148,9 @@ RaycastResult intersectsFace(float3 origin, float3 direction, Face face) {
     if (t > epsilon) { // && t <= 1) { // if t > 1 then ray is longer than segment length
         return RaycastResult{
             .hit = origin + direction * t, 
-            .hitFace = face,
             .normal = normal, 
             .distance = t,
-            .barycentric = float3(1.0-u-v, u, v)
+            .barycentric = float3(1.0-u-v, u, v),
         };
     }
 
@@ -165,6 +174,7 @@ RaycastResult traverseBLAS(
                     Face face = faces[i];
                     RaycastResult result = intersectsFace(origin, look, face);
                     if (result.distance < closestResult.distance) {
+                        result.faceIndex = i;
                         closestResult = result;
                     }
                 }
@@ -204,6 +214,7 @@ RaycastResult traverseTLAS(
                     if (result.distance < closestResult.distance) {
                         result.hit = worldHit;
                         result.normal = normalize(instance.invNormalMatrix * result.normal);
+                        result.instanceIndex = node.instanceIndex;
                         closestResult = result;
                     }
                 }
@@ -251,9 +262,13 @@ float2 random2(float seed) {
 kernel void raytrace(
     texture2d<half, access::write> output [[texture(0)]], // Display Output
     texture2d<float, access::read_write> accumTexture [[texture(1)]], // Light passes
-    //texture2d<float, access::sample> prevAccumTexture [[texture(2)]], // Last frame color
-    //texture2d<float, access::sample> prevDepthInstanceTexture [[texture(3)]], // Last frame validation
-    //texture2d<float, access::write> currentDepthInstanceTexture [[texture(4)]], //  Save for next frame
+    
+    /*
+    texture2d<float, access::sample> prevAccumTexture [[texture(2)]], // Last frame color
+    texture2d<float, access::sample> prevDepthInstanceTexture [[texture(3)]], // Last frame validation
+    texture2d<float, access::write> currentDepthInstanceTexture [[texture(4)]], //  Save for next frame
+    */
+
     sampler samp [[sampler(0)]],
     
     device Uniforms* uniforms [[buffer(0)]],
@@ -274,7 +289,7 @@ kernel void raytrace(
     uint pixelX = gid.x;
     uint pixelY = gid.y;
 
-    float seed = float(gid.x * 1973 + gid.y * 9277 + sampleIndex * 26699);
+    float seed = float(pixelX * 1973 + pixelY * 9277 + sampleIndex * 26699);
     float2 randXY = random2(seed);
     // Apply jitter: use 0.5 for the first frame, random offset for successive frames
     float offsetX = (uniforms->sampleIndex == 0) ? 0.5 : randXY.x;
@@ -292,9 +307,27 @@ kernel void raytrace(
     float3 rayOrigin = uniforms->cameraPosition;
     float3 rayDirection = look;
     float3 invRayDirection = 1.0 / rayDirection;
+
+    // Check first bounce, used for reprojection
+    /*
+    float3 primaryWorldHit = float3(0.0);
+    float primaryDepth = INFINITY;
+    float primaryInstanceIndex = -1.0;
+    bool primaryHitSky = true;*/
    
     for (uint bounce = 0; bounce < maxLightBounces; bounce++) {
         RaycastResult result = traverseTLAS(rayOrigin, rayDirection, invRayDirection, tlasNodes, tlasInstances, blasNodes, faces);
+
+        /*
+        if (bounce == 0) {
+            primaryDepth = result.distance;
+            if (result.distance != INFINITY) {
+                primaryWorldHit = result.hit;
+                primaryInstanceIndex = float(result.instanceIndex); // Make sure traverseTLAS populates this!
+                primaryHitSky = false;
+            }
+        }
+*/
         if (result.distance == INFINITY) {
             float t = 0.5 * (rayDirection.y + 1.0);
             float3 skyColor = mix(horizonColor, zenithColor, t);
@@ -303,31 +336,40 @@ kernel void raytrace(
             break;
         }
 
-        Material material = materials[result.hitFace.materialIndex];
+        Face hitFace = faces[result.faceIndex];
+        Material material = materials[hitFace.materialIndex];
 
         seed += float(bounce) * 79.19;
         if (random(seed) > material.dissolve) { // Stochastic Dissolve Check
             // To avoid intersecting the same triangle, nudge the ray a bit
-            rayOrigin = result.hit + rayDirection * 0.001f;
+            rayOrigin = result.hit + rayDirection * epsilon;
             continue; // Force the bounce loop to continue using the exact same direction, bypassing all lighting math, albedo sampling, and throughput loss.
         }
 
         float3 albedo;
-        if (material.ambientTextureIndex == -1) {
-            albedo = material.ambientColor.xyz;
+        if (material.diffuseTextureIndex == -1) {
+            albedo = material.diffuseColor.rgb;
         } else {
-            texture2d<float> tex = collection.textures[material.ambientTextureIndex];
             // Interpolated UV
-            float2 uv = result.barycentric.x * result.hitFace.vertex1.uv + result.barycentric.y * result.hitFace.vertex2.uv + result.barycentric.z * result.hitFace.vertex3.uv;
+            float2 uv = result.barycentric.x * hitFace.vertex1.uv + result.barycentric.y * hitFace.vertex2.uv + result.barycentric.z * hitFace.vertex3.uv;
+            float pixelDissolve = material.dissolveTextureIndex == -1 ? material.dissolve : 
+                collection.textures[material.dissolveTextureIndex].sample(samp, uv).a;
+
+            // Weird logic for dissolve, might need to change in the future
+            if (pixelDissolve < 0.01f) {
+                bounce--;
+                rayOrigin = result.hit + rayDirection * 0.01f;
+                continue; // Should not be consired a hit as there is no visible pixel, continue where left off
+            }
+            texture2d<float> tex = collection.textures[material.diffuseTextureIndex];
             float4 texColor = tex.sample(samp, uv);
-            albedo = mix(material.ambientColor.xyz, texColor.xyz, texColor.w); // Alpha Blend Texture with Material Color
+            albedo = mix(material.diffuseColor.rgb, texColor.rgb, texColor.a); // Alpha Blend Texture with Material Color
         }
 
-        // Interpolated Normal (WRONG when combined with TRANSFORMATION MATRIX, FIX LATER!)
-        float3 normal = normalize(result.barycentric.x * result.hitFace.vertex1.normal + result.barycentric.y * result.hitFace.vertex2.normal + result.barycentric.z * result.hitFace.vertex3.normal);
+        float3 normal = normalize(result.barycentric.x * hitFace.vertex1.normal + result.barycentric.y * hitFace.vertex2.normal + result.barycentric.z * hitFace.vertex3.normal);
         float normalDotLight = max(dot(normal, sunDirection), 0.0);
         if (normalDotLight > 0.0) {
-            RaycastResult shadowResult = traverseTLAS(result.hit + normal * 0.01, sunDirection, invSunDirection, tlasNodes, tlasInstances, blasNodes, faces);
+            RaycastResult shadowResult = traverseTLAS(result.hit + normal * epsilon, sunDirection, invSunDirection, tlasNodes, tlasInstances, blasNodes, faces);
             bool sunVisible = shadowResult.distance == INFINITY;
             if (sunVisible) radiance += throughput * albedo * sunColor * normalDotLight;
         }
@@ -340,24 +382,24 @@ kernel void raytrace(
             throughput /= p;
         }
 
+        // TODO: this code should not run if it's the last bounce
         throughput *= albedo;
         seed += float(bounce) * 143.137; 
         float2 bounceRand = random2(seed + float(bounce) * 12345.6789);
-        if (dot(normal, rayDirection) > 0.0) normal = -normal;
-        float3 bounceDirection = cosineWeightedHemisphere(normal, bounceRand);
-        rayOrigin = result.hit + normal * 0.01; // Add tiny bit of normal so that the next bounce doesn't intersect with the same face
-        rayDirection = bounceDirection;
+        if (dot(normal, rayDirection) > 0.0) normal = -normal; 
+        rayOrigin = result.hit + normal * epsilon; // Add tiny bit of normal so that the next bounce doesn't intersect with the same face
+        rayDirection = cosineWeightedHemisphere(normal, bounceRand);
         invRayDirection = 1.0 / rayDirection;
     }
 
-    float4 accumColor = float4(radiance.xyz, 1.0);
+    float4 accumColor = float4(radiance.rgb, 1.0);
     if (sampleIndex > 0) {
         float4 prevColor = accumTexture.read(gid);
         accumColor += prevColor;
     }
 
     accumTexture.write(accumColor, gid);
-    float3 averageColor = accumColor.xyz / float(sampleIndex + 1); // sampleIndex + 1 = sampleCount
+    float3 averageColor = accumColor.rgb / float(sampleIndex + 1); // sampleIndex + 1 = sampleCount
     float3 toneMappedColor = 1.0 - exp(-averageColor);
-    output.write(half4(half3(toneMappedColor.xyz), 1.0), gid);
+    output.write(half4(half3(toneMappedColor.rgb), 1.0), gid);
 }

@@ -39,7 +39,8 @@ class WindowDelegate : NSObject, NSWindowDelegate {
 
         let device = MTLCreateSystemDefaultDevice()!
         objectImporter = ObjectImporter(device: device)
-        scene = importScene(filePath: "Saves/scene1.json", objectImporter: objectImporter) ?? Scene()
+        //scene.addAsset(objectImporter.importObject(filePath: "Assets/RobloxRoom/Room.obj"))
+        scene = importScene(filePath: "Saves/RobloxWorld2.json", objectImporter: objectImporter) ?? Scene()
         //scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
         //scene.addAsset(importer.importObject(filePath: "Assets/RobloxWorld2/RobloxWorld2.obj"))
         scene.buildAccelerationStructures() // Mandatory
@@ -53,7 +54,9 @@ class WindowDelegate : NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(window)
         NSApp.activate(ignoringOtherApps: true)
 
-        // Add it here:
+        // ROtation Code
+
+        /*
         if #available(macOS 10.15, *) {
             Task.detached(priority: .userInitiated) { [weak self] in
                 while true {
@@ -72,6 +75,6 @@ class WindowDelegate : NSObject, NSWindowDelegate {
             }
         } else {
             // Fallback on earlier versions
-        }
+        }*/
     }
 }

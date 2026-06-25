@@ -1,0 +1,92 @@
+epsilon = 0.0001 (klein getal)
+sunDirection = float3(0, 1, 0)
+
+Per sampleIndex in [0, maxSamples - 1] {
+
+    Per pixel waarbij pixelcoordinaten: (gid.x, gid.y) {
+        
+        - Maak een seed voor RNG
+        - Calculeer 2 random getallen in [0, 1] voor pixelX- en pixelY offsets voor sample jitter
+        - als het de eerste sample is, zonder jitter, samples daarna met jitter voor Anti-aliasing, smoother edges
+
+        - Converteer Screenspace pixel coordinaten naar NDC-space (Normalized Device Coordinates) 
+        - Calculeer aspect ratio: schermbreedte / schermhoogte
+        - Bereken waar de Ray op het scherm van de camera valt: projectedX en projectedY
+            door middel van de NDC coordinates
+        
+        - Bereken de Ray direction door middel van de camera unitvectoren en projectedX en projectedY:
+            look = normalize(cameraForward + projectedX * cameraRight + projectedY * cameraUp) 
+        
+        - radiance variabel = float3(0, 0, 0) (Licht dat is ingevallen)
+        - throughput variabel = float3(1, 1, 1) (Kleuren die kunnen worden doorgelaten)
+        - rayOrigin variabel = cameraPosition
+        - rayDirection variabel = look
+
+        Per bounce in [0, maxLightBounces - 1] {
+
+            - result = Raycast vanaf: rayOrigin, met richting: rayDirection
+            - result niks geraakt -> {
+
+                - bereken lucht kleur en bereken hoevol zon op die plek valt
+                  radiance += throughput * (skyColor * skyIntensity + sunColor * sunAmount)
+            }
+
+            - bij transparente materialen: Stochastic Dissolve Check
+            - Sommige rays moeten door het object heen vallen, wordt gedaan met een RNG
+            - als randomNumber > material.disolve {
+
+                - rayOrigin = result.hit + rayDirection * epsilon
+                - volgende lightbounce
+
+            }
+
+            - bereken albedo, als er een diffuseTexture is {
+                - bereken de UV coordinaten op de plek van de raycast.hit
+                    door de UV te interpoleren met de barycentrische coordinaten van de result
+                - als de pixel van de texture transparent is omdat de alpha-channel ~0 is dan 
+                    { ook dit niet tellen als een raycast hit en volgende lightbounce }
+                - sample de diffuseTexture 
+                - albedo = mix(material.diffuseColor.xyz, texColor.xyz, texColor.w)
+            } anders {
+                - albedo = material.diffuseColor.xyz
+            }
+
+            - bereken de geinterpoleerde Normal op de plek van de raycast hit
+                door middel van de barycentrische coordinaten
+            NEE (Next Event Estimation):
+            - als de zon richt naar de result.hitFace {
+                - shadowResult = Raycast vanaf: result.hit + normal * epsilon, met richting: sunDirection
+                als geen intersect bij shadowResult dan zon zichtbaar voor deze face {
+                    radiance += throughput * albedo * sunColor * dot(normal, sunDirection)
+                }
+            }
+
+            Russian Roulette
+            - als bounce > 3 {
+                - p = clamp(grootste van (throughput.r, throughput.g, throughput.b), 0.05, 0.95)
+                als randomNumber > p { stop met lightbounce loop }
+                throughput /= p
+            }
+
+            throughput *= albedo
+
+            Diffuse Reflection
+            - bounceRand = float2(randomNumber, randomNumber)
+            - als dot(normal, rayDirection) > 0 { normal = -normal }
+            - rayOrigin = result.hit + normal * epsilon
+            - rayDirection = cosineWeightedHemisphere(normal, bounceRand)
+        }
+
+        - accumColor = float4(radiance.xyz, 1)
+        - als deze sample niet de eerste is {
+            - previousColor = accumTexture.read(gid)
+            - accumColor += previousColor
+        }
+
+        - accumTexture.write(accumColor, gid)
+        - averageColor = accumColor.xyz / float(sampleIndex + 1)
+        - toneMappedColor = 1.0 - exp(-averageColor)
+        - output.write(half4(half3(toneMappedColor.xyz), 1), gid)
+    }
+
+}

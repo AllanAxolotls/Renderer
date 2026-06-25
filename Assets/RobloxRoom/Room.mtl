@@ -1,0 +1,1014 @@
+newmtl Part223Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.180392 0.180392 0.180392 
+
+d 1
+
+Ns 202
+
+map_Ka Part223_diff.png
+map_Kd Part223_diff.png
+map_d Part223_diff.png
+
+newmtl Union22Mtl
+Material Color
+Ka 0 1 0
+Kd 0 1 0
+Ks 0 0.180392 0 
+
+d 1
+
+Ns 202
+
+map_Ka Part57_diff.png
+map_Kd Part57_diff.png
+map_d Part57_diff.png
+
+map_Bump Part57_nmap.png
+
+map_Ns Part57_spec.png
+
+newmtl Part215Mtl
+Material Color
+Ka 0.00258583 0.00258583 0.00258583
+Kd 0.00258583 0.00258583 0.00258583
+Ks 0.000466463 0.000466463 0.000466463 
+
+d 1
+
+Ns 202
+
+map_Ka Part57_diff.png
+map_Kd Part57_diff.png
+map_d Part57_diff.png
+
+map_Bump Part57_nmap.png
+
+map_Ns Part57_spec.png
+
+newmtl Part205Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.180392 0.180392 0.180392 
+
+d 1
+
+Ns 202
+
+map_Ka Part205_diff.png
+map_Kd Part205_diff.png
+map_d Part205_diff.png
+
+newmtl Part203Mtl
+Material Color
+Ka 0.124741 0.113921 0.121986
+Kd 0.124741 0.113921 0.121986
+Ks 0.0225023 0.0205504 0.0220053 
+
+d 1
+
+Ns 202
+
+map_Ka Part57_diff.png
+map_Kd Part57_diff.png
+map_d Part57_diff.png
+
+map_Bump Part57_nmap.png
+
+map_Ns Part57_spec.png
+
+newmtl Part199Mtl
+Material Color
+Ka 0.74453 0.74453 0.737205
+Kd 0.74453 0.74453 0.737205
+Ks 0.0671537 0.0671537 0.066493 
+
+d 1
+
+Ns 0
+
+newmtl Case1Mtl
+Material Color
+Ka 0.804559 0.804559 0.84337
+Kd 0.804559 0.804559 0.84337
+Ks 0.0694129 0.0694129 0.0727613 
+
+d 1
+
+Ns 0
+
+map_Ka Case1_diff.png
+map_Kd Case1_diff.png
+map_d Case1_diff.png
+
+map_Ns Case1_spec.png
+
+newmtl Part197Mtl
+Material Color
+Ka 0.00258583 0.00258583 0.00258583
+Kd 0.00258583 0.00258583 0.00258583
+Ks 0.000162248 0.000162248 0.000162248 
+
+d 0.952941
+
+Ns 0
+
+map_Ka Part196_diff.png
+map_Kd Part196_diff.png
+map_d Part196_diff.png
+
+newmtl Part196Mtl
+Material Color
+Ka 0.789314 0.781751 0.74453
+Kd 0.789314 0.781751 0.74453
+Ks 0.0495256 0.049051 0.0467156 
+
+d 0.952941
+
+Ns 0
+
+map_Ka Part196_diff.png
+map_Kd Part196_diff.png
+map_d Part196_diff.png
+
+newmtl Wheel1Mtl
+Material Color
+Ka 0.00258583 0.00258583 0.00258583
+Kd 0.00258583 0.00258583 0.00258583
+Ks 0.000233231 0.000233231 0.000233231 
+
+d 1
+
+Ns 0
+
+map_Ka Wheel1_diff.png
+map_Kd Wheel1_diff.png
+map_d Wheel1_diff.png
+
+map_Bump Wheel1_nmap.png
+
+map_Ns Wheel1_spec.png
+
+newmtl Lamp2Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0901961 0.0901961 0.0901961 
+
+d 1
+
+Ns 0
+
+map_Ka Lamp2_diff.png
+map_Kd Lamp2_diff.png
+map_d Lamp2_diff.png
+
+newmtl Union9Mtl
+Material Color
+Ka 0.000107187 0.436813 0.84337
+Kd 0.000107187 0.436813 0.84337
+Ks 4.24546e-05 0.173012 0.334041 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Wheelled21Mtl
+Material Color
+Ka 1 0 0
+Kd 1 0 0
+Ks 0.0627451 0 0 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part171Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part171_diff.png
+map_Kd Part171_diff.png
+map_d Part171_diff.png
+
+newmtl Screen1Mtl
+Material Color
+Ka 0.00258583 0.00258583 0.00258583
+Kd 0.00258583 0.00258583 0.00258583
+Ks 0.00258583 0.00258583 0.00258583 
+
+d 0.752941
+
+Ns 0
+
+map_Ka Screen1_diff.png
+map_Kd Screen1_diff.png
+map_d Screen1_diff.png
+
+map_Bump Screen1_nmap.png
+
+map_Ns Screen1_spec.png
+
+newmtl Pillow2Mtl
+Material Color
+Ka 0.632043 0 0
+Kd 0.632043 0 0
+Ks 0.0396576 0 0 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part136Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part136_diff.png
+map_Kd Part136_diff.png
+map_d Part136_diff.png
+
+newmtl Trunk1Mtl
+Material Color
+Ka 0.20471 0.106156 0.0581872
+Kd 0.20471 0.106156 0.0581872
+Ks 0.00561949 0.00291409 0.0015973 
+
+d 1
+
+Ns 0
+
+map_Ka Part47_diff.png
+map_Kd Part47_diff.png
+map_d Part47_diff.png
+
+map_Bump Part47_nmap.png
+
+map_Ns Part47_spec.png
+
+newmtl Belt1Mtl
+Material Color
+Ka 0.124741 0.113921 0.121986
+Kd 0.124741 0.113921 0.121986
+Ks 0.00782688 0.00714798 0.00765401 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part143Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part143_diff.png
+map_Kd Part143_diff.png
+map_d Part143_diff.png
+
+newmtl Leafcrown1Mtl
+Material Color
+Ka 0.0780566 0.154152 0.0869013
+Kd 0.0780566 0.154152 0.0869013
+Ks 0.00214273 0.00423163 0.00238552 
+
+d 0.980392
+
+Ns 0
+
+map_Ka Leafcrown1_diff.png
+map_Kd Leafcrown1_diff.png
+map_d Leafcrown1_diff.png
+
+newmtl Part211Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.180392 0.180392 0.180392 
+
+d 1
+
+Ns 202
+
+map_Ka Part211_diff.png
+map_Kd Part211_diff.png
+map_d Part211_diff.png
+
+newmtl Part138Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part138_diff.png
+map_Kd Part138_diff.png
+map_d Part138_diff.png
+
+newmtl Part145Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part145_diff.png
+map_Kd Part145_diff.png
+map_d Part145_diff.png
+
+newmtl Lamp1Mtl
+Material Color
+Ka 0.00258583 0.00258583 0.00258583
+Kd 0.00258583 0.00258583 0.00258583
+Ks 0.000233231 0.000233231 0.000233231 
+
+d 1
+
+Ns 0
+
+newmtl Part162Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part162_diff.png
+map_Kd Part162_diff.png
+map_d Part162_diff.png
+
+newmtl Part120Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 0.901961
+
+Ns 0
+
+map_Ka Part120_diff.png
+map_Kd Part120_diff.png
+map_d Part120_diff.png
+
+newmtl Part133Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part133_diff.png
+map_Kd Part133_diff.png
+map_d Part133_diff.png
+
+newmtl Chair2Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.396078 0.396078 0.396078 
+
+d 1
+
+Ns 0
+
+map_Ka MeshesclenchedRightFist2_diff.png
+map_Kd MeshesclenchedRightFist2_diff.png
+map_d MeshesclenchedRightFist2_diff.png
+
+newmtl Trunk2Mtl
+Material Color
+Ka 0.38891 0.38891 0.38891
+Kd 0.38891 0.38891 0.38891
+Ks 0.010676 0.010676 0.010676 
+
+d 0.603922
+
+Ns 0
+
+map_Ka Trunk2_diff.png
+map_Kd Trunk2_diff.png
+map_d Trunk2_diff.png
+
+newmtl Part125Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part125_diff.png
+map_Kd Part125_diff.png
+map_d Part125_diff.png
+
+newmtl Union19Mtl
+Material Color
+Ka 0.00715504 0.018913 0.0315514
+Kd 0.00715504 0.018913 0.0315514
+Ks 0.00129071 0.00341175 0.00569162 
+
+d 1
+
+Ns 202
+
+map_Ka Part57_diff.png
+map_Kd Part57_diff.png
+map_d Part57_diff.png
+
+map_Bump Part57_nmap.png
+
+map_Ns Part57_spec.png
+
+newmtl Part151Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part151_diff.png
+map_Kd Part151_diff.png
+map_d Part151_diff.png
+
+newmtl Pillow1Mtl
+Material Color
+Ka 0.320382 0.547994 0.715465
+Kd 0.320382 0.547994 0.715465
+Ks 0.0201024 0.0343839 0.0448919 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part123Mtl
+Material Color
+Ka 1 0 0
+Kd 1 0 0
+Ks 0.0627451 0 0 
+
+d 0.913725
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part157Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part120_diff.png
+map_Kd Part120_diff.png
+map_d Part120_diff.png
+
+newmtl Union17Mtl
+Material Color
+Ka 1 0.0986892 0.0986892
+Kd 1 0.0986892 0.0986892
+Ks 0.396078 0.0390887 0.0390887 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Chair4Mtl
+Material Color
+Ka 0 0.982826 1
+Kd 0 0.982826 1
+Ks 0 0.389276 0.396078 
+
+d 1
+
+Ns 0
+
+newmtl Dirt1Mtl
+Material Color
+Ka 0.280124 0.0697271 0.018913
+Kd 0.280124 0.0697271 0.018913
+Ks 0.00988674 0.00246096 0.000667517 
+
+d 1
+
+Ns 0
+
+map_Ka Dirt1_diff.png
+map_Kd Dirt1_diff.png
+map_d Dirt1_diff.png
+
+map_Bump Dirt1_nmap.png
+
+map_Ns Dirt1_spec.png
+
+newmtl Part146Mtl
+Material Color
+Ka 0.560499 0.0169881 0.00775103
+Kd 0.560499 0.0169881 0.00775103
+Ks 0.0351686 0.00106592 0.000486339 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part2Mtl
+Material Color
+Ka 0.598942 0.605484 0.645555
+Kd 0.598942 0.605484 0.645555
+Ks 0.0375807 0.0379912 0.0405054 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Paint21Mtl
+Material Color
+Ka 0.74453 0.74453 0.737205
+Kd 0.74453 0.74453 0.737205
+Ks 0.294892 0.294892 0.291991 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part5Mtl
+Material Color
+Ka 0.353741 0.363604 0.420508
+Kd 0.353741 0.363604 0.420508
+Ks 0.0221955 0.0228144 0.0263848 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part140Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part140_diff.png
+map_Kd Part140_diff.png
+map_d Part140_diff.png
+
+newmtl Chair1Mtl
+Material Color
+Ka 0.00715504 0.018913 0.0315514
+Kd 0.00715504 0.018913 0.0315514
+Ks 0.00283396 0.00749103 0.0124968 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part1Mtl
+Material Color
+Ka 0.21952 0.505432 0.715465
+Kd 0.21952 0.505432 0.715465
+Ks 0.0137738 0.0317134 0.0448919 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part47Mtl
+Material Color
+Ka 0.124741 0.113921 0.121986
+Kd 0.124741 0.113921 0.121986
+Ks 0.00342426 0.00312724 0.00334863 
+
+d 1
+
+Ns 0
+
+map_Ka Part47_diff.png
+map_Kd Part47_diff.png
+map_d Part47_diff.png
+
+map_Bump Part47_nmap.png
+
+map_Ns Part47_spec.png
+
+newmtl Part114Mtl
+Material Color
+Ka 0.804559 0.804559 0.84337
+Kd 0.804559 0.804559 0.84337
+Ks 0.0410167 0.0410167 0.0429953 
+
+d 1
+
+Ns 61
+
+map_Ka Part114_diff.png
+map_Kd Part114_diff.png
+map_d Part114_diff.png
+
+map_Bump Part114_nmap.png
+
+map_Ns Part114_spec.png
+
+newmtl Plant1Mtl
+Material Color
+Ka 0.0677246 0.315763 0.0677246
+Kd 0.0677246 0.315763 0.0677246
+Ks 0.00239028 0.0111446 0.00239028 
+
+d 1
+
+Ns 0
+
+map_Ka Dirt1_diff.png
+map_Kd Dirt1_diff.png
+map_d Dirt1_diff.png
+
+map_Bump Dirt1_nmap.png
+
+map_Ns Plant1_spec.png
+
+newmtl Part149Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part149_diff.png
+map_Kd Part149_diff.png
+map_d Part149_diff.png
+
+newmtl Part9Mtl
+Material Color
+Ka 0.804559 0.804559 0.84337
+Kd 0.804559 0.804559 0.84337
+Ks 0.0504821 0.0504821 0.0529173 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Union3Mtl
+Material Color
+Ka 0.103634 0.108711 0.14198
+Kd 0.103634 0.108711 0.14198
+Ks 0.0410472 0.0430581 0.0562353 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Soil1Mtl
+Material Color
+Ka 0.151058 0.0962661 0.0677246
+Kd 0.151058 0.0962661 0.0677246
+Ks 0.00947815 0.00604023 0.00424939 
+
+d 1
+
+Ns 0
+
+map_Ka Soil1_diff.png
+map_Kd Soil1_diff.png
+map_d Soil1_diff.png
+
+map_Bump Soil1_nmap.png
+
+map_Ns Soil1_spec.png
+
+newmtl Part105Mtl
+Material Color
+Ka 0.464741 0.65237 0.781751
+Kd 0.464741 0.65237 0.781751
+Ks 0.184074 0.25839 0.309635 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part98Mtl
+Material Color
+Ka 0.00258583 0.00258583 0.00258583
+Kd 0.00258583 0.00258583 0.00258583
+Ks 0.00102419 0.00102419 0.00102419 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part57Mtl
+Material Color
+Ka 0.353741 0.363604 0.420508
+Kd 0.353741 0.363604 0.420508
+Ks 0.0638121 0.0655913 0.0758563 
+
+d 1
+
+Ns 202
+
+map_Ka Part57_diff.png
+map_Kd Part57_diff.png
+map_d Part57_diff.png
+
+map_Bump Part57_nmap.png
+
+map_Ns Part57_spec.png
+
+newmtl Part56Mtl
+Material Color
+Ka 0.940601 0.940601 0.940601
+Kd 0.940601 0.940601 0.940601
+Ks 0.0737726 0.0737726 0.0737726 
+
+d 1
+
+Ns 0
+
+map_Ka Part55_diff.png
+map_Kd Part55_diff.png
+map_d Part55_diff.png
+
+map_Bump Part55_nmap.png
+
+map_Ns Part55_spec.png
+
+newmtl Part54Mtl
+Material Color
+Ka 0.00258583 0.00258583 0.00258583
+Kd 0.00258583 0.00258583 0.00258583
+Ks 0.000162248 0.000162248 0.000162248 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl MeshesclenchedRightFist2Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka MeshesclenchedRightFist2_diff.png
+map_Kd MeshesclenchedRightFist2_diff.png
+map_d MeshesclenchedRightFist2_diff.png
+
+newmtl Part122Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Part122_diff.png
+map_Kd Part122_diff.png
+map_d Part122_diff.png
+
+newmtl Part59Mtl
+Material Color
+Ka 0.804559 0.804559 0.84337
+Kd 0.804559 0.804559 0.84337
+Ks 0.318669 0.318669 0.334041 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part55Mtl
+Material Color
+Ka 0.320382 0.547994 0.715465
+Kd 0.320382 0.547994 0.715465
+Ks 0.025128 0.0429799 0.0561149 
+
+d 1
+
+Ns 0
+
+map_Ka Part55_diff.png
+map_Kd Part55_diff.png
+map_d Part55_diff.png
+
+map_Bump Part55_nmap.png
+
+map_Ns Part55_spec.png
+
+newmtl Part10Mtl
+Material Color
+Ka 0 1 1
+Kd 0 1 1
+Ks 0 0.0901961 0.0901961 
+
+d 1
+
+Ns 0
+
+newmtl MeshesclenchedRightFist1Mtl
+Material Color
+Ka 0.373615 0.368591 0.383775
+Kd 0.373615 0.368591 0.383775
+Ks 0.0234425 0.0231273 0.02408 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Seat1Mtl
+Material Color
+Ka 0.00715504 0.018913 0.0315514
+Kd 0.00715504 0.018913 0.0315514
+Ks 0.000448943 0.0011867 0.0019797 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
+newmtl Part4Mtl
+Material Color
+Ka 0.940601 0.940601 0.940601
+Kd 0.940601 0.940601 0.940601
+Ks 0.372552 0.372552 0.372552 
+
+d 1
+
+Ns 0
+
+map_Ka Part1_diff.png
+map_Kd Part1_diff.png
+map_d Part1_diff.png
+
+map_Bump Part1_nmap.png
+
