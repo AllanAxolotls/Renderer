@@ -28,7 +28,7 @@ public func createImage(width: Int, height: Int, pixelData: Data) -> CGImage? {
     )
 }
 
-public func saveImageToDesktop(_ image: CGImage) {
+public func saveImageToDesktop(name: String, _ image: CGImage) {
     let fileManager = FileManager.default
     
     guard let desktopURL = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first else {
@@ -36,7 +36,7 @@ public func saveImageToDesktop(_ image: CGImage) {
         return
     }
     
-    let fileURL = desktopURL.appendingPathComponent(outputImageName)
+    let fileURL = desktopURL.appendingPathComponent(name)
     
     if #available(macOS 11.0, *) {
         guard let destination = CGImageDestinationCreateWithURL(

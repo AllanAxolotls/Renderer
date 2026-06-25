@@ -1,0 +1,23 @@
+{
+    "sceneMetaData": {
+        "name": "Typical Raytracing",
+        "version": "1.0",
+        "ambientColor": [1, 1, 1]
+    },
+    "assets": [
+        {
+            "source": "Assets/Typical/Typical.obj"
+        }
+    ],
+    "camera": {
+        "position": [0, 0, 5],
+        "rotation": [0, 180, 0]
+    },
+    "sphereLights": [
+        {
+            "position": [0, 0, 5],
+            "emission": [10, 10, 10],
+            "radius": 100
+        }
+    ]
+}

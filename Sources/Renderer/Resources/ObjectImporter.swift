@@ -176,7 +176,8 @@ public class MaterialImporter {
             case "illum": currentMaterial.illuminationModel = Int32(tokens[1])!
             case "d": currentMaterial.dissolve = Float(tokens[1])!
             case "Tr": currentMaterial.dissolve = 1.0 - Float(tokens[1])!
-            case "Ns": currentMaterial.specularExponent = Float(tokens[1])!
+            case "Ns": currentMaterial.smoothness = 1 - pow(2 / (Float(tokens[1])! + 2), 1/4)
+            case "smoothness": currentMaterial.smoothness = Float(tokens[1])!
             case "Ni": currentMaterial.refractiveIndex = Float(tokens[1])!
             // case "sharpness":
             // case "Tf":

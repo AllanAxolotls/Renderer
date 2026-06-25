@@ -5,6 +5,7 @@ private struct SceneData: Codable {
     let sceneMetaData: SceneMetaData?
     let assets: [SceneAsset]?
     let camera: SceneCamera?
+    let sphereLights: [SceneSphereLight]?
 }
 
 private struct Vec3: Codable {
@@ -53,6 +54,12 @@ private struct SceneCamera: Codable {
     let rotation: Vec3?
 }
 
+private struct SceneSphereLight: Codable {
+    let position: Vec3
+    let emission: Vec3
+    let radius: Float
+}
+
 public func importScene(filePath: String, objectImporter: ObjectImporter) -> Scene? {
     guard let resolvedFilePath = resolveFilePath(filePath: filePath) else {
         print("Failed loading file: \(filePath), not found in directory!")
@@ -94,6 +101,14 @@ public func importScene(filePath: String, objectImporter: ObjectImporter) -> Sce
         }
 
         scene.addAsset(object)
+    }
+
+    for sphereLight in sceneData.sphereLights ?? [] {
+        scene.sphereLights.append(SphereLight(
+            position: sphereLight.position.value, 
+            emission: sphereLight.emission.value,
+            radius: sphereLight.radius
+        ))
     }
 
     return scene

@@ -481,7 +481,7 @@ Wat termen verzameld voor theoretisch kader
 
 25-6-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
-[ 08:45-10:00 (duur: 1 uur, 15 min. ) ]
+[ 10:00-12:40 (duur: 2 uur, 40 min. ) ]
 Start aan theoretisch kader
 Inlezen met BVH2 vs BVH4 vs BVH8, BVH4 is het beste voor mijn Intel GPU
 SAH is het best voor static scenes, morton codes (LBVH) is het best voor dynamic scenes
@@ -497,13 +497,33 @@ Het oppervlakte wordt zo berekend:
     // min en max zijn de min en max bounds coordinaten van de driehoek
     Float3 d = max - min;
     surfaceArea = 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
+ik kom later hierop terug
+Wat is MIS (Multiple Importance Sampling)? doel: Noise Reduction
+Een combinatie van NEE (Next Event Estimation) en BRDF(Bidirectional Reflectance Distrubtion Function)/material sampling
+https://www.montis.pmf.ac.me/allissues/48/Mathematica-Montisnigri-48-8.pdf
 
+[ 13:00-14:00 (duur: 1 uur ) ]
+Light datatypes toevoegen en MIS proberen te begrijpen
+https://lisyarus.github.io/blog/posts/multiple-importance-sampling.html
 
-
+[ 15:50- (duur: ) ]
+Verder proberen MIS te begrijpen
+Vet goeie video die het structureel uitlegt:
+https://www.youtube.com/watch?v=p772XkEnEIU
 
 
 
 =============================================================================================================================================
+
+TODO:
+add lightsources to raytracer
+add mesh editor, scene saving, importing via GUI
+add Sun Position changer with MouseButtonRight
+lightsources toevoegen aan rasterizer
+
+Verre Toekomst:
+Lens flare en andere post-processing effects 
+
 
 Notes voor mezelf:
 wat kan misschien theoretisch beter: 

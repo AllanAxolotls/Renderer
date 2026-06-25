@@ -26,5 +26,12 @@
     "camera": {
         "position": [0, 0, 0],
         "rotation": [0, 20, 0]
-    }
+    },
+    "sphereLights": [
+        {
+            "position": [0, 0, 0],
+            "emission": [100, 0, 0],
+            "radius": 10
+        }
+    ]
 }

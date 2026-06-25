@@ -7,6 +7,7 @@ public class Scene: @unchecked Sendable {
     var textures: [MTLTexture] = []
     var subMeshes: [SubMesh] = []
     var meshes: [Mesh] = []
+    var sphereLights: [SphereLight] = []
 
     var camera: Camera = Camera()
     var tlas: TLAS?

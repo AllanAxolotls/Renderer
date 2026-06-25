@@ -23,6 +23,7 @@ public struct RasterizerUniforms {
 
 public struct RayTracerUniforms {
     let sampleIndex: Int32
+    let sphereLightCount: Int32
     let fovScale: Float
     let cameraPosition: simd_float3
     let cameraForward: simd_float3

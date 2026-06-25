@@ -23,7 +23,7 @@ public struct Material {
     public var bumpTextureIndex: Int32 = -1
     public var illuminationModel: Int32 = 2
     public var dissolve: Float = 1.0 // 1.0 = Opaque, 0.0 = Transparent
-    public var specularExponent: Float = 0 // Shininess
+    public var smoothness: Float = 0 // Shininess
     public var refractiveIndex: Float = 1.0 // How much light bends
 }
 
@@ -36,7 +36,7 @@ public struct SubMesh { // Submeshes are essentially DrawCalls, every drawcall h
     public var meshIndex: Int32
 }
 
-public class Mesh {
+public final class Mesh {
     public var subMeshOffset: Int32
     public var subMeshCount: Int32
     public var faceOffset: Int32
@@ -153,6 +153,17 @@ public class Mesh {
     }
 }
 
+public final class SphereLight {
+    public var position: simd_float3
+    public var emission: simd_float3
+    public var radius: Float
+
+    init(position: simd_float3, emission: simd_float3, radius: Float) {
+        self.position = position
+        self.emission = emission
+        self.radius = radius
+    }
+}
 
 
 

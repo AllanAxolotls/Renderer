@@ -40,6 +40,7 @@ class WindowDelegate : NSObject, NSWindowDelegate {
         let device = MTLCreateSystemDefaultDevice()!
         objectImporter = ObjectImporter(device: device)
         //scene.addAsset(objectImporter.importObject(filePath: "Assets/RobloxRoom/Room.obj"))
+        //scene = importScene(filePath: "Saves/Typical.json", objectImporter: objectImporter) ?? Scene()
         scene = importScene(filePath: "Saves/RobloxWorld2.json", objectImporter: objectImporter) ?? Scene()
         //scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
         //scene.addAsset(importer.importObject(filePath: "Assets/RobloxWorld2/RobloxWorld2.obj"))

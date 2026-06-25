@@ -1,5 +1,7 @@
 import MetalKit
 
+private let benchmarkGPUTime: Bool = false
+
 @MainActor final class RasterRenderer: Renderer {
     var pipeline: MTLRenderPipelineState
     var pipelineBuilder: PipelineBuilder!
@@ -120,13 +122,14 @@ import MetalKit
 
         encoder.endEncoding()
 
-        /*
-        if #available(macOS 10.15, *) {
-            commandBuffer.addCompletedHandler { cb in  
-                let gpuTime = (cb.gpuEndTime - cb.gpuStartTime) * 1000
-                print("GPU Time: \(gpuTime) ms")
+        if benchmarkGPUTime {
+            if #available(macOS 10.15, *) {
+                commandBuffer.addCompletedHandler { cb in  
+                    let gpuTime = (cb.gpuEndTime - cb.gpuStartTime) * 1000
+                    print("GPU Time: \(gpuTime) ms")
+                }
             }
-        }*/
+        }
 
         commandBuffer.present(drawable)
         commandBuffer.commit()    

@@ -55,8 +55,7 @@ struct Material {
     int bumpTextureIndex;
     int illuminationModel;
     float dissolve;
-    float smoothness;
-    // float specularProbability
+    float specularExponent;
     float refractiveIndex;
 };
 
@@ -250,19 +249,21 @@ float3 cosineWeightedHemisphere(float3 normal, float2 rand) {
     return normalize(tangent * x + bitangent * y + normal * z);
 }
 
-uint nextRandom(thread uint& state) {
-    state = state * 747796405 + 2891336453;
-    uint result = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
-    result = (result >> 22) ^ result;
-    return result;
+float hash(uint x) {
+    x ^= x >> 16;
+    x *= 0x7feb352d;
+    x ^= x >> 15;
+    x *= 0x846ca68b;
+    x ^= x >> 16;
+    return float(x) / 4294967295.0;
 }
 
-float random(thread uint& state) {
-    return nextRandom(state) / 4294967295.0; // 2^32 - 1
+float random(float seed) {
+    return hash(seed);
 }
 
-float2 random2(thread uint& seed) {
-    return float2(random(seed), random(seed));
+float2 random2(float seed) {
+    return float2(hash(seed), hash(seed * 1.3247 + 13.37));
 }
 
 kernel void raytrace(
@@ -277,7 +278,6 @@ kernel void raytrace(
     device BLASNode* blasNodes [[buffer(4)]],
     device Face* faces [[buffer(5)]],
     device TextureCollection& collection [[buffer(6)]],
-    device SphereLight* sphereLights [[buffer(7)]],
     
     uint2 gid [[thread_position_in_grid]]
 ) {
@@ -290,7 +290,7 @@ kernel void raytrace(
     uint pixelY = gid.y;
 
     // Apply jitter: use 0.5 for the first frame, random offset for successive frames
-    uint seed = pixelX * 1973 + pixelY * 9277 + sampleIndex * 26699;
+    float seed = float(pixelX * 1973 + pixelY * 9277 + sampleIndex * 26699);
     float2 randXY = random2(seed);
     float offsetX = (uniforms->sampleIndex == 0) ? 0.5 : randXY.x;
     float offsetY = (uniforms->sampleIndex == 0) ? 0.5 : randXY.y;
@@ -306,13 +306,10 @@ kernel void raytrace(
     float3 rayOrigin = uniforms->cameraPosition;
     float3 rayDirection = normalize(uniforms->cameraForward + projectedX * uniforms->cameraRight + projectedY * uniforms->cameraUp);
     float3 invRayDirection = 1.0 / rayDirection;
-
-    int sphereLightCount = uniforms->sphereLightCount; 
-
+   
     for (uint bounce = 0; bounce < maxLightBounces; bounce++) {
         // Raycast
         RaycastResult result = traverseTLAS(rayOrigin, rayDirection, invRayDirection, tlasNodes, tlasInstances, blasNodes, faces);
-        
         if (result.distance == INFINITY) {
             float t = 0.5 * (rayDirection.y + 1.0);
             float3 skyColor = mix(horizonColor, zenithColor, t);
@@ -324,12 +321,8 @@ kernel void raytrace(
         Face hitFace = faces[result.faceIndex];
         Material material = materials[hitFace.materialIndex];
 
-        if (length(material.emissionColor.rgb) > epsilon) {
-            radiance += throughput * material.emissionColor.rgb;
-            break;
-        }
-
         // Stochastic Dissolve Check
+        seed += float(bounce) * 79.19;
         if (random(seed) > material.dissolve) {
             // To avoid intersecting the same triangle, nudge the ray a bit
             rayOrigin = result.hit + rayDirection * epsilon;
@@ -370,18 +363,17 @@ kernel void raytrace(
         if (bounce > 3) { // This is for colors that are too dark and can be discarded, a nice optimisation basically
             float p = max(throughput.r, max(throughput.g, throughput.b));
             p = clamp(p, 0.05f, 0.95f);
-            if (random(seed) > p) break;
+            if (random(seed + bounce * 991.74) > p) break;
             throughput /= p;
         }
 
         // Diffuse Reflection (BSDF)
         throughput *= albedo;
-        float2 bounceRand = random2(seed);
-        if (dot(normal, rayDirection) > 0.0) normal = -normal;
+        seed += float(bounce) * 143.137; 
+        float2 bounceRand = random2(seed + float(bounce) * 12345.6789);
+        if (dot(normal, rayDirection) > 0.0) normal = -normal; 
         rayOrigin = result.hit + normal * epsilon; // Add tiny bit of normal so that the next bounce doesn't intersect with the same face
-        float3 diffuseDirection = cosineWeightedHemisphere(normal, bounceRand);
-        float3 specularDirection = reflect(rayDirection, normal);
-        rayDirection = mix(diffuseDirection, specularDirection, material.smoothness);
+        rayDirection = cosineWeightedHemisphere(normal, bounceRand);
         invRayDirection = 1.0 / rayDirection;
     }
 

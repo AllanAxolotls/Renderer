@@ -2,11 +2,12 @@ import MetalKit
 import ImageIO
 import UniformTypeIdentifiers
 
-let outputImageName = "output.png"
-let raytraceOnCPU: Bool = false // If true, the CPU does the raytracing of one frame and saves it as outputImageName, then exits the program immediately
-let saveAndExitOnGPU: Bool = false // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
-let maxSamples: Int32 = 100
-let printCPUProgressEveryRow: Bool = true
+private let outputImageName = "output.png"
+private let raytraceOnCPU: Bool = false // If true, the CPU does the raytracing of one frame and saves it as outputImageName, then exits the program immediately
+private let saveAndExitOnGPU: Bool = false // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
+private let maxSamples: Int32 = 100
+private let printCPUProgressEveryRow: Bool = true
+private let benchmarkGPUTime: Bool = true
 
 /*
 private func toByte(_ x: Float) -> UInt8 {
@@ -155,11 +156,9 @@ final class RayTracerRenderer: Renderer {
     var blasNodeBuffer: MTLBuffer!
     var faceBuffer: MTLBuffer!
     var argumentBuffer: MTLBuffer!
+    var sphereLightBuffer: MTLBuffer!
 
     var accumTexture: MTLTexture? = nil
-    //var prevAccumTexture: MTLTexture? = nil
-    //var prevDepthInstanceTexture: MTLTexture? = nil
-    //var currentDepthInstanceTexture: MTLTexture? = nil
 
     var lastCameraPosition: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
     var lastCameraForward: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
@@ -176,6 +175,7 @@ final class RayTracerRenderer: Renderer {
 
         var uniforms = RayTracerUniforms(
             sampleIndex: sampleIndex,
+            sphereLightCount: Int32(scene.sphereLights.count),
             fovScale: tan(FOVRad * 0.5), 
             cameraPosition: scene.camera.position,
             cameraForward: scene.camera.forward, 
@@ -199,6 +199,9 @@ final class RayTracerRenderer: Renderer {
         }
         scene.tlas!.faces.withUnsafeBufferPointer { ptr in
             self.faceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<RayTraceTriangleGPU>.stride * scene.tlas!.faces.count)
+        }
+        scene.sphereLights.withUnsafeBufferPointer { ptr in
+            self.sphereLightBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<SphereLight>.stride * scene.sphereLights.count)
         }
     }
 
@@ -273,6 +276,7 @@ final class RayTracerRenderer: Renderer {
 
                 var uniforms = RayTracerUniforms(
                     sampleIndex: sampleIndex,
+                    sphereLightCount: Int32(scene.sphereLights.count),
                     fovScale: tan(FOVRad * 0.5), 
                     cameraPosition: scene.camera.position,
                     cameraForward: scene.camera.forward, 
@@ -293,6 +297,7 @@ final class RayTracerRenderer: Renderer {
                 encoder.setBuffer(blasNodeBuffer, offset: 0, index: 4)
                 encoder.setBuffer(faceBuffer, offset: 0, index: 5)
                 encoder.setBuffer(argumentBuffer, offset: 0, index: 6)
+                encoder.setBuffer(sphereLightBuffer, offset: 0, index: 7)
                 for texture in scene.textures { encoder.useResource(texture, usage: .sample) }
 
                 let width = pipeline.threadExecutionWidth
@@ -302,6 +307,14 @@ final class RayTracerRenderer: Renderer {
                 encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
 
                 encoder.endEncoding()
+                 if benchmarkGPUTime {
+                    if #available(macOS 10.15, *) {
+                        commandBuffer.addCompletedHandler { cb in  
+                            let gpuTime = (cb.gpuEndTime - cb.gpuStartTime) * 1000
+                            print("GPU Time: \(gpuTime) ms")
+                        }
+                    }
+                }
                 commandBuffer.present(drawable)
                 commandBuffer.commit()
                 commandBuffer.waitUntilCompleted()
@@ -320,7 +333,7 @@ final class RayTracerRenderer: Renderer {
                     let width = Int(cGWidth)
                     let height = Int(cGHeight)
                     if let image = createImage(width: width, height: height, pixelData: Data(pixels)) {
-                        saveImageToDesktop(image)
+                        saveImageToDesktop(name: outputImageName, image)
                     } else {
                         print("Failed to create image.")
                     }
