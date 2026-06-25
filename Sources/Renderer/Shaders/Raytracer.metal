@@ -44,20 +44,21 @@ struct Face {
 };
 
 struct Material {
-    float3 ambientColor;
+    float3 ambientColor; // currently unused
     float3 diffuseColor;
-    float3 specularColor;
+    float3 specularColor; // currently unused
     float3 emissionColor;
-    int ambientTextureIndex;
+    int ambientTextureIndex; // currently unused
     int diffuseTextureIndex; // -1 = no texture
-    int specularTextureIndex;
+    int specularTextureIndex; // currently unused
     int dissolveTextureIndex;
-    int bumpTextureIndex;
-    int illuminationModel;
+    int bumpTextureIndex; // currently unused
+    // need to add a normalTexture too
+    int illuminationModel; // currently unused
     float dissolve;
     float smoothness;
     // float specularProbability
-    float refractiveIndex;
+    float refractiveIndex; // currently unused
 };
 
 struct TextureCollection {
