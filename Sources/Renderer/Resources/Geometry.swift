@@ -23,7 +23,9 @@ public struct Material {
     public var bumpTextureIndex: Int32 = -1
     public var illuminationModel: Int32 = 2
     public var dissolve: Float = 1.0 // 1.0 = Opaque, 0.0 = Transparent
-    public var smoothness: Float = 0 // Shininess
+    public var emissionIntensity: Float = 1
+    public var roughness: Float = 1
+    public var metallic: Float = 0
     public var refractiveIndex: Float = 1.0 // How much light bends
 }
 

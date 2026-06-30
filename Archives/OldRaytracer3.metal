@@ -21,6 +21,12 @@ struct Uniforms {
     float3 cameraRight;
 };
 
+struct SphereLight {
+    float3 position;
+    float3 emission;
+    float radius;
+};
+
 struct Vertex {
     float3 position;
     float2 uv;
@@ -50,7 +56,6 @@ struct Material {
     // need to add a normalTexture too
     int illuminationModel; // currently unused
     float dissolve;
-    float emissionIntensity;
     float roughness;
     float metallic;
     float refractiveIndex; // IOR, currently unused
@@ -60,13 +65,13 @@ struct TextureCollection {
     array<texture2d<float>, 128> textures;
 };
 
-
-struct BLASNode { // For empty leafs, use min: +INFINITY and max: -INFINITY
-    float4 minBoundsX; float4 minBoundsY; float4 minBoundsZ;
-    float4 maxBoundsX; float4 maxBoundsY; float4 maxBoundsZ;
-    int4 childIndices;
-    int4 faceOffsets;
-    int4 faceCounts;
+struct BLASNode {
+    float3 minBounds;
+    float3 maxBounds;
+    int leftIndex;
+    int escapeIndex;
+    int faceOffset;
+    int faceCount;
 };
 
 struct TLASInstance {
@@ -77,13 +82,12 @@ struct TLASInstance {
 };
 
 struct TLASNode {
-    float4 minBoundsX; float4 minBoundsY; float4 minBoundsZ;
-    float4 maxBoundsX; float4 maxBoundsY; float4 maxBoundsZ;
-
-    int4 childIndices;
-    int4 tlasInstanceIndices;
+    float3 minBounds;
+    float3 maxBounds;
+    int leftIndex;
+    int escapeIndex;
+    int instanceIndex; // TLAS Instance
 };
-
 
 struct RaycastResult {
     float3 hit;
@@ -94,7 +98,7 @@ struct RaycastResult {
     int instanceIndex;
 };
 
-inline bool intersectsAABB(float3 origin, float3 invDirection, float3 minBounds, float3 maxBounds) {
+bool intersectsAABB(float3 origin, float3 invDirection, float3 minBounds, float3 maxBounds) {
     // X-axis slab
     float t1 = (minBounds.x - origin.x) * invDirection.x;
     float t2 = (maxBounds.x - origin.x) * invDirection.x;
@@ -113,66 +117,12 @@ inline bool intersectsAABB(float3 origin, float3 invDirection, float3 minBounds,
     tmin = fmax(tmin, fmin(tz1, tz2));
     tmax = fmin(tmax, fmax(tz1, tz2));
 
-    return tmin <= tmax && tmax > 0;
+    // The final overlap check: 
+    // Returns true if the largest entry time is less than or equal to the earliest exit time
+    return tmin <= tmax;
 }
 
-inline float4 intersects4AABBs(
-    float3 origin, float3 invDirection, 
-    float4 minBoundsX, float4 minBoundsY, float4 minBoundsZ, 
-    float4 maxBoundsX, float4 maxBoundsY, float4 maxBoundsZ
-) {
-    float4 t1 = (minBoundsX - float4(origin.x)) * invDirection.x;
-    float4 t2 = (maxBoundsX - float4(origin.x)) * invDirection.x;
-    float4 tmin = fmin(t1, t2);
-    float4 tmax = fmax(t1, t2);
-
-    float4 ty1 = (minBoundsY - float4(origin.y)) * invDirection.y;
-    float4 ty2 = (maxBoundsY - float4(origin.y)) * invDirection.y;
-    tmin = fmax(tmin, fmin(ty1, ty2));
-    tmax = fmin(tmax, fmax(ty1, ty2));
-
-    float4 tz1 = (minBoundsZ - float4(origin.z)) * invDirection.z;
-    float4 tz2 = (maxBoundsZ - float4(origin.z)) * invDirection.z;
-    tmin = fmax(tmin, fmin(tz1, tz2));
-    tmax = fmin(tmax, fmax(tz1, tz2));
-
-    return float4(
-        (tmin[0] <= tmax[0] && tmax[0] > 0) ? tmin[0] : INFINITY, 
-        (tmin[1] <= tmax[1] && tmax[1] > 0) ? tmin[1] : INFINITY, 
-        (tmin[2] <= tmax[2] && tmax[2] > 0) ? tmin[2] : INFINITY, 
-        (tmin[3] <= tmax[3] && tmax[3] > 0) ? tmin[3] : INFINITY
-    );
-}
-
-inline float4 intersects4AABBsAndCloserThanRayHit(
-    float3 origin, float3 invDirection, float t,
-    float4 minBoundsX, float4 minBoundsY, float4 minBoundsZ, 
-    float4 maxBoundsX, float4 maxBoundsY, float4 maxBoundsZ
-) {
-    float4 t1 = (minBoundsX - float4(origin.x)) * invDirection.x;
-    float4 t2 = (maxBoundsX - float4(origin.x)) * invDirection.x;
-    float4 tmin = fmin(t1, t2);
-    float4 tmax = fmax(t1, t2);
-
-    float4 ty1 = (minBoundsY - float4(origin.y)) * invDirection.y;
-    float4 ty2 = (maxBoundsY - float4(origin.y)) * invDirection.y;
-    tmin = fmax(tmin, fmin(ty1, ty2));
-    tmax = fmin(tmax, fmax(ty1, ty2));
-
-    float4 tz1 = (minBoundsZ - float4(origin.z)) * invDirection.z;
-    float4 tz2 = (maxBoundsZ - float4(origin.z)) * invDirection.z;
-    tmin = fmax(tmin, fmin(tz1, tz2));
-    tmax = fmin(tmax, fmax(tz1, tz2));
-
-    return float4(
-        (tmin[0] <= tmax[0] && tmax[0] > 0 && tmin[0] < t) ? tmin[0] : INFINITY, 
-        (tmin[1] <= tmax[1] && tmax[1] > 0 && tmin[1] < t) ? tmin[1] : INFINITY, 
-        (tmin[2] <= tmax[2] && tmax[2] > 0 && tmin[2] < t) ? tmin[2] : INFINITY, 
-        (tmin[3] <= tmax[3] && tmax[3] > 0 && tmin[3] < t) ? tmin[3] : INFINITY
-    );
-}
-
-inline RaycastResult intersectsFace(float3 origin, float3 direction, Face face) {
+RaycastResult intersectsFace(float3 origin, float3 direction, Face face) {
     // Backface Culling, keeps CCW-wound triangles
     float3 normal = face.normal;
     if (dot(normal, direction) > 0) { return RaycastResult{ .distance = INFINITY, }; }
@@ -206,137 +156,76 @@ inline RaycastResult intersectsFace(float3 origin, float3 direction, Face face) 
     return RaycastResult { .distance = INFINITY };
 }
 
-inline void processBLASLeaf(float3 origin, float3 direction, device BLASNode& node, thread RaycastResult& closest, int i, device Face* faces) {
-    for (int j = node.faceOffsets[i]; j < node.faceCounts[i] + node.faceOffsets[i]; ++j) {
-        device Face& face = faces[j];
-        RaycastResult result = intersectsFace(origin, direction, face);
-        if (result.distance < closest.distance) {
-            result.faceIndex = j;
-            closest = result;
-        }
-    }
-}
-
-// BVH4 Traversal
+// BVH traversal, Bottom Level Acceleration Structure
 RaycastResult traverseBLAS(
-    float3 origin, float3 direction, float3 invDirection,
-    device BLASNode* blasNodes, int blasStartIndex, device Face* faces
+    float3 origin, float3 look, float3 inverseLook,
+    device BLASNode* blasNodes, int blasStartIndex,
+    device Face* faces
 ) {
+    RaycastResult closestResult = RaycastResult{ .distance = INFINITY };
     int nodeIndex = blasStartIndex;
-    uint stackPtr = 0;
-    int stack[32];
-
-    RaycastResult closest = RaycastResult { .distance = INFINITY };
 
     while (nodeIndex != -1) {
-        device BLASNode& node = blasNodes[nodeIndex];
-        float4 hits = intersects4AABBs(
-            origin, invDirection,
-            node.minBoundsX, node.minBoundsY, node.minBoundsZ,
-            node.maxBoundsX, node.maxBoundsY, node.maxBoundsZ
-        );
-
-        int child0 = node.childIndices[0]; float dist0 = hits[0];
-        int child1 = node.childIndices[1]; float dist1 = hits[1];
-        int child2 = node.childIndices[2]; float dist2 = hits[2];
-        int child3 = node.childIndices[3]; float dist3 = hits[3];
-        int i0 = 0, i1 = 1, i2 = 2, i3 = 3;
-
-        // Swapping does not seem to improve performance, it only adds ~30ms 
-        /*
-        #define SWAP(a, b, t_a, t_b, i_a, i_b) if (a > b) { float temp = a; a = b; b = temp; int temp_t = t_a; t_a = t_b; t_b = temp_t; int temp_i = i_a; i_a = i_b; i_b = temp_i; }
-        SWAP(dist0, dist1, child0, child1, i0, i1);
-        SWAP(dist2, dist3, child2, child3, i2, i3);
-        SWAP(dist0, dist2, child0, child2, i0, i2);
-        SWAP(dist1, dist3, child1, child3, i1, i3);
-        SWAP(dist1, dist2, child1, child2, i1, i2);
-        #undef SWAP
-        */
-
-        if (dist0 < closest.distance) {
-            if (child0 == -1) processBLASLeaf(origin, direction, node, closest, i0, faces); 
-            else stack[stackPtr++] = child0;
+        BLASNode node = blasNodes[nodeIndex];
+        if (intersectsAABB(origin, inverseLook, node.minBounds, node.maxBounds) ) {
+            if (node.leftIndex == -1) { // if it's a leaf
+                for (int i = node.faceOffset; i < node.faceCount + node.faceOffset; ++i) {
+                    Face face = faces[i];
+                    RaycastResult result = intersectsFace(origin, look, face);
+                    if (result.distance < closestResult.distance) {
+                        result.faceIndex = i;
+                        closestResult = result;
+                    }
+                }
+                nodeIndex = node.escapeIndex;
+            } else {
+                nodeIndex = node.leftIndex;
+            }
+        } else {
+            nodeIndex = node.escapeIndex;
         }
-        if (dist1 < closest.distance) {
-            if (child1 == -1) processBLASLeaf(origin, direction, node, closest, i1, faces); 
-            else stack[stackPtr++] = child1;
-        }
-        if (dist2 < closest.distance) {
-            if (child2 == -1) processBLASLeaf(origin, direction, node, closest, i2, faces); 
-            else stack[stackPtr++] = child2;
-        }
-        if (dist3 < closest.distance) {
-            if (child3 == -1) processBLASLeaf(origin, direction, node, closest, i3, faces); 
-            else stack[stackPtr++] = child3;
-        }
-
-        nodeIndex = (stackPtr != 0) ? stack[--stackPtr] : -1;
     }
-
-    return closest;
+    return closestResult;
 }
 
-// BVH4 Traversal
+// Top Level Acceleration Structure
 RaycastResult traverseTLAS(
-    float3 origin, float3 direction, float3 invDirection, 
-    device TLASNode* tlasNodes, device TLASInstance* tlasInstances, 
+    float3 origin, float3 look, float3 inverseLook,
+    device TLASNode* tlasNodes, device TLASInstance* instances, 
     device BLASNode* blasNodes, device Face* faces
 ) {
+    RaycastResult closestResult = RaycastResult{ .distance = INFINITY };
     int nodeIndex = 0;
-    uint stackPtr = 0;
-    int stack[32];
-
-    RaycastResult closest = RaycastResult { .distance = INFINITY };
-
     while (nodeIndex != -1) {
-        device TLASNode& node = tlasNodes[nodeIndex];
-        float4 hits = intersects4AABBsAndCloserThanRayHit(
-            origin, invDirection, closest.distance,
-            node.minBoundsX, node.minBoundsY, node.minBoundsZ,
-            node.maxBoundsX, node.maxBoundsY, node.maxBoundsZ
-        );
+        TLASNode node = tlasNodes[nodeIndex];
+        if (intersectsAABB(origin, inverseLook, node.minBounds, node.maxBounds)) {
+            if (node.leftIndex == -1) { // if it's a leaf
+                TLASInstance instance = instances[node.instanceIndex];
+                float3 localOrigin = (instance.invModelMatrix * float4(origin, 1)).xyz;
+                float3 localLook = normalize((instance.invModelMatrix * float4(look, 0)).xyz);
+                float3 localInverseLook = 1.0 / localLook;
+                RaycastResult result = traverseBLAS(localOrigin, localLook, localInverseLook, blasNodes, instance.blasStartIndex, faces);
 
-        for (int i = 0; i < 4; i++) {
-            float hit = hits[i];
-            if (hit == INFINITY) continue;
-
-            if (node.childIndices[i] == -1) { // is the hit a Leaf
-                int instanceIndex = node.tlasInstanceIndices[i];
-
-                if (instanceIndex != -1) {
-                    device TLASInstance& tlasInstance = tlasInstances[instanceIndex];
-                    float3 localOrigin = (tlasInstance.invModelMatrix * float4(origin, 1)).xyz;
-                    float3 localDirection = normalize((tlasInstance.invModelMatrix * float4(direction, 0)).xyz);
-                    float3 localInvDirection = 1.0 / localDirection;
-                    RaycastResult result = traverseBLAS(
-                        localOrigin, localDirection, localInvDirection,
-                        blasNodes, tlasInstance.blasStartIndex, faces
-                    );
-
-                    if (result.distance != INFINITY) {
-                        float3 worldHit = (tlasInstance.modelMatrix * float4(result.hit, 1)).xyz;
-                        result.distance = length(worldHit - origin);
-
-                        if (result.distance < closest.distance) {
-                            result.hit = worldHit;
-                            result.normal = normalize(tlasInstance.invNormalMatrix * result.normal);
-                            result.instanceIndex = instanceIndex;
-                            closest = result;
-                        }
-                    }               
-                } 
-            } else { // Branch Node
-                stack[stackPtr++] = node.childIndices[i];
+                if (result.distance != INFINITY) {
+                    float3 worldHit = (instance.modelMatrix * float4(result.hit, 1)).xyz;
+                    result.distance = length(worldHit - origin);
+                   
+                    if (result.distance < closestResult.distance) {
+                        result.hit = worldHit;
+                        result.normal = normalize(instance.invNormalMatrix * result.normal);
+                        result.instanceIndex = node.instanceIndex;
+                        closestResult = result;
+                    }
+                }
+                nodeIndex = node.escapeIndex;
+            } else {
+                nodeIndex = node.leftIndex;
             }
-        }
-
-        nodeIndex = -1;
-        if (stackPtr != 0) {
-            nodeIndex = stack[--stackPtr];
+        } else {
+            nodeIndex = node.escapeIndex;
         }
     }
-
-    return closest;
+    return closestResult;
 }
 
 
@@ -367,6 +256,7 @@ float2 random2(thread uint& seed) {
     return float2(random(seed), random(seed));
 }
 
+// Generates a local coordinate system (Tangent, Bitangent) from a Normal
 void getTangentSpace(float3 normal, thread float3& tangent, thread float3& bitangent) {
     float3 helper = abs(normal.x) > 0.99 ? float3(0, 1, 0) : float3(1, 0, 0);
     tangent = normalize(cross(normal, helper));
@@ -391,7 +281,6 @@ float3 sampleGGX(float2 randVal, float roughness, float3 normal) {
     return normalize(tangent * localH.x + bitangent * localH.y + normal * localH.z);
 }
 
-
 kernel void raytrace(
     //texture2d<half, access::write> output [[texture(0)]], // Display Output
     texture2d<half, access::write> output [[texture(0)]], // noisy texture output
@@ -405,6 +294,7 @@ kernel void raytrace(
     device BLASNode* blasNodes [[buffer(4)]],
     device Face* faces [[buffer(5)]],
     device TextureCollection& collection [[buffer(6)]],
+    device SphereLight* sphereLights [[buffer(7)]],
     
     uint2 gid [[thread_position_in_grid]]
 ) {
@@ -416,9 +306,9 @@ kernel void raytrace(
     uint pixelX = gid.x;
     uint pixelY = gid.y;
 
-    // Apply jitter: use 0.5 for the first frame, random offset for frames afterwards
-    uint rngState = pixelX * 1973 + pixelY * 9277 + sampleIndex * 26699;
-    float2 randXY = random2(rngState);
+    // Apply jitter: use 0.5 for the first frame, random offset for successive frames
+    uint seed = pixelX * 1973 + pixelY * 9277 + sampleIndex * 26699;
+    float2 randXY = random2(seed);
     float offsetX = (uniforms->sampleIndex == 0) ? 0.5 : randXY.x;
     float offsetY = (uniforms->sampleIndex == 0) ? 0.5 : randXY.y;
 
@@ -427,12 +317,14 @@ kernel void raytrace(
     float aspectRatio = (float)width / (float)height;
     float projectedX = ndcX * aspectRatio * uniforms->fovScale;
     float projectedY = ndcY * uniforms->fovScale;
-    
+
     float3 radiance = float3(0.0, 0.0, 0.0); // Recieved Light
     float3 throughput = float3(1.0, 1.0, 1.0); // Which colors get filtered out or not
     float3 rayOrigin = uniforms->cameraPosition;
     float3 rayDirection = normalize(uniforms->cameraForward + projectedX * uniforms->cameraRight + projectedY * uniforms->cameraUp);
     float3 invRayDirection = 1.0 / rayDirection;
+
+    int sphereLightCount = uniforms->sphereLightCount; 
 
     for (uint bounce = 0; bounce < maxLightBounces; bounce++) {
         // Raycast
@@ -457,7 +349,7 @@ kernel void raytrace(
         }
 
         // Stochastic Dissolve Check
-        if (random(rngState) > material.dissolve) {
+        if (random(seed) > material.dissolve) {
             // To avoid intersecting the same triangle, nudge the ray a bit
             rayOrigin = result.hit + rayDirection * epsilon;
             continue; // Force the bounce loop to continue using the exact same direction, bypassing all lighting math, albedo sampling, and throughput loss.
@@ -521,15 +413,15 @@ kernel void raytrace(
         if (bounce > 3) { // This is for colors that are too dark and can be discarded, a nice optimisation basically
             float p = max(throughput.r, max(throughput.g, throughput.b));
             p = clamp(p, 0.05f, 0.95f);
-            if (random(rngState) > p) break;
+            if (random(seed) > p) break;
             throughput /= p;
         }
 
         // --- INDIRECT SURFACE SCATTERING & PATH SELECTION ---
         rayOrigin = result.hit + normal * epsilon; 
-        float2 bounceRand = random2(rngState);
+        float2 bounceRand = random2(seed);
 
-        if (random(rngState) < specularProbability) {
+        if (random(seed) < specularProbability) {
             // 1. SPECULAR ROUTE (GGX Importance Sampling)
             // Clamp roughness slightly to prevent division-by-zero on smooth mirrors
             float roughness = max(material.roughness, 0.001f);

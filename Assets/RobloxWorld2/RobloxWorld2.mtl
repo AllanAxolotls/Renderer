@@ -147,7 +147,7 @@ Ks 0.0215859 0.00619226 3.09022e-05
 d 1
 
 Ns 0
-smoothness 0.5
+Pr 0.5
 
 newmtl Part85Mtl
 Material Color
@@ -296,6 +296,7 @@ Ks 0.0351686 0.00106592 0.000486339
 d 1
 
 Ns 0
+Pr 0
 
 newmtl Part1Mtl
 Material Color

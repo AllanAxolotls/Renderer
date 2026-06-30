@@ -40,7 +40,10 @@ final class PipelineBuilder {
         let argumentBuffer = device.makeBuffer(length: bufferLength, options: [])!
         argumentEncoder.setArgumentBuffer(argumentBuffer, offset: 0)
         argumentEncoder.setTextures(textures, range: 0..<textures.count)
-        return (try! device.makeComputePipelineState(function: function), argumentBuffer)
+        return (
+            try! device.makeComputePipelineState(function: function), 
+            argumentBuffer
+        )
      }
 
     private func configureBlending(_ desc: MTLRenderPipelineDescriptor) {

@@ -21,3 +21,10 @@ To run quicker after having already compiled:
 - E: Up
 - Q: Down
 - R: Switch between Rasterization and Raytracing
+
+**Scenes**
+To change Scenes or import more objects, either make a new Save
+in the Saves folder or edit the scene inside /View/AppDelegate.swift
+For loading a save: `scene = importScene(filePath: "...", objectImporter: objectImporter) ?? Scene()`
+For importing an .obj without loading another save: 
+`scene.addAsset(importer.importObject(filePath: "..."))`

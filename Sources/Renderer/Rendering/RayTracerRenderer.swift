@@ -147,7 +147,7 @@ final class RayTracerRenderer: Renderer {
     var device: MTLDevice!
     var scene: Scene
     var pipelineBuilder: PipelineBuilder!
-    var pipeline: MTLComputePipelineState!
+    var raytraceState: MTLComputePipelineState!
 
     let uniformsBuffer: MTLBuffer!
     var materialBuffer: MTLBuffer!
@@ -156,7 +156,6 @@ final class RayTracerRenderer: Renderer {
     var blasNodeBuffer: MTLBuffer!
     var faceBuffer: MTLBuffer!
     var argumentBuffer: MTLBuffer!
-    var sphereLightBuffer: MTLBuffer!
 
     var accumTexture: MTLTexture? = nil
 
@@ -171,7 +170,7 @@ final class RayTracerRenderer: Renderer {
         self.device = device
         self.scene = scene
         self.pipelineBuilder = PipelineBuilder(device: device)
-        (self.pipeline, argumentBuffer) = self.pipelineBuilder.makeRayTracePipeline(textures: scene.textures)
+        (self.raytraceState, argumentBuffer) = self.pipelineBuilder.makeRayTracePipeline(textures: scene.textures)
 
         var uniforms = RayTracerUniforms(
             sampleIndex: sampleIndex,
@@ -199,9 +198,6 @@ final class RayTracerRenderer: Renderer {
         }
         scene.tlas!.faces.withUnsafeBufferPointer { ptr in
             self.faceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<RayTraceTriangleGPU>.stride * scene.tlas!.faces.count)
-        }
-        scene.sphereLights.withUnsafeBufferPointer { ptr in
-            self.sphereLightBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<SphereLight>.stride * scene.sphereLights.count)
         }
     }
 
@@ -285,7 +281,7 @@ final class RayTracerRenderer: Renderer {
                 )
                 memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<RayTracerUniforms>.stride)
 
-                encoder.setComputePipelineState(self.pipeline)
+                encoder.setComputePipelineState(self.raytraceState)
                 encoder.setTexture(drawable.texture, index: 0)
                 encoder.setTexture(accumTexture, index: 1)
                 encoder.setSamplerState(self.pipelineBuilder.sampler, index: 0)
@@ -297,11 +293,10 @@ final class RayTracerRenderer: Renderer {
                 encoder.setBuffer(blasNodeBuffer, offset: 0, index: 4)
                 encoder.setBuffer(faceBuffer, offset: 0, index: 5)
                 encoder.setBuffer(argumentBuffer, offset: 0, index: 6)
-                encoder.setBuffer(sphereLightBuffer, offset: 0, index: 7)
                 for texture in scene.textures { encoder.useResource(texture, usage: .sample) }
 
-                let width = pipeline.threadExecutionWidth
-                let height = pipeline.maxTotalThreadsPerThreadgroup / width
+                let width = raytraceState.threadExecutionWidth
+                let height = raytraceState.maxTotalThreadsPerThreadgroup / width
                 let threadsPerThreadgroup = MTLSize(width: width, height: height, depth: 1)
                 let threadsPerGrid = MTLSize(width: drawable.texture.width, height: drawable.texture.height, depth: 1)
                 encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)

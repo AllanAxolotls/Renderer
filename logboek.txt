@@ -506,16 +506,83 @@ https://www.montis.pmf.ac.me/allissues/48/Mathematica-Montisnigri-48-8.pdf
 Light datatypes toevoegen en MIS proberen te begrijpen
 https://lisyarus.github.io/blog/posts/multiple-importance-sampling.html
 
-[ 15:50- (duur: ) ]
+[ 15:50-17:30 (duur: 1 uur, 40 min. ) ]
 Verder proberen MIS te begrijpen
 Vet goeie video die het structureel uitlegt:
 https://www.youtube.com/watch?v=p772XkEnEIU
+Specular reflection toegevoegd
+
+[ 21:30-23:20 (duur: 1 uur, 50 min. ) ]
+Verder proberen specular dingen aan de praat te krijgen met als resultaat: meer noise
+maar wel iets wat lijkt te werken
+
+
+
+26-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:50-14:00 (duur: 4 uur, 10 min. ) ]
+Vet veel lezen van pbr.org, de wiskunde achter Monte Carlo begrijpen, het is
+vooral wiskunde A/D kansberekening. Ik vind MIS nogSTEEDS moeilijk.
+Ik wil nu eigenlijk eerst de BVH dingen verbeteren met SAH en memory efficiency
+en daarna specular color enzo fixen, dan refraction toevoegen.
+
+[ 18:18-18:34 (duur: 16 min. ) ]
+Verder lezen
+
+
+27-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 15:20-18:00 (duur: 2 uur, 40 min. ) ]
+Verder pbr-book.org lezen
+Rendering equation begrijp ik nu
+BRDF snap ik nu iets beter. Er is veel meer natuurkunde dan ik dacht.
+
+[ 19:04-22:30 (duur: 3 uur, 24 min. ) ]
+Cook-Torrance BRDF principe lezen
+bestaat uit 3 functies: D, G en F
+D: Distribution, G: Geometric Shadowing, F: Fresnel-Schlick
+Deze functies worden microfacet-functions genoemd. Microfacets zijn imperfecties op surfaces
+Daarnaast probeer ik BVH4 functionaliteit te maken voor zowel de TLAS als BLAS en ik wil daarna direct SAH toevoegen omdat de BVH generation
+toch gelijk veranderd moet worden.
+
+
+28-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:31-10:00 (duur: 1 uur, 29 min. ) ]
+Verder aan BVH4
+
+
+29-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 12:18-17:34 (duur: 5 uur, 16 min. ) ]
+BVH4 constructie maken
+https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/
+Op dit moment wint BVH2 nog van BVH4 omdat ik geen SAH heb toegevoegd en
+geen depth-sorting doe om eerst de dichtstbijzijnde AABB en driehoeken te doorzoeken.
+Er waren een paar bugs, omdat ik data aan het schrijven was naar structs die niet meer
+werden gebruikt, vet irritant, 1 uur lang zitten afvragen wat ik fout heb gedaan.
+Ik moet zometeen alsnog BVH4 build weer compleet veranderen omdat SAH veel makkelijker is
+via een BVH2 en die dan te converteren naar BVH4
+probeerde BVH2 -> BVH4 conversion maar is een bug, iets met bounds enzo
+
+
+30-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:08-11:40 (duur: 2 uur, 32 min. ) ]
+PWS-ochtend.
+Theoretisch kader + inleiding gemaakt
+
+[ 13:00-16:00 (duur: 3 uur ) ]
+BVH4 eindelijk gefixt, nu de snelheid omhoog knallen door sorting toe te voegen, wat blijkbaar dus alleen de FPS laat dalen... 
+SAH dan maar toevoegen.
 
 
 
 =============================================================================================================================================
 
 TODO:
+MIS
+specular color met specular probability toevoegen van sebstian lague's video
 add lightsources to raytracer
 add mesh editor, scene saving, importing via GUI
 add Sun Position changer with MouseButtonRight
