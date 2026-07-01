@@ -1,5 +1,6 @@
 newmtl Part241Mtl
 Material Color
+# Dark Green
 Ka 0.0677246 0.315763 0.0677246
 Kd 0.0677246 0.315763 0.0677246
 Ks 0.00424939 0.0198126 0.00424939 
@@ -10,13 +11,16 @@ Ns 0
 
 newmtl Part206Mtl
 Material Color
+# StreetLamp Lights
 Ka 0.923993 0.859174 0.154152
 Kd 0.923993 0.859174 0.154152
 Ks 0.0579761 0.0539089 0.0096723 
+Ke 12 12 0
 
 d 1
 
 Ns 0
+Pr 0.2    
 
 newmtl Light1Mtl
 Material Color
@@ -32,6 +36,7 @@ Ns 0
 
 newmtl Part65Mtl
 Material Color
+# Dirt + House Stepups
 Ka 0.144972 0.0370285 0.000638183
 Kd 0.144972 0.0370285 0.000638183
 Ks 0.00909629 0.00232336 4.00428e-05 
@@ -52,6 +57,7 @@ Ns 0
 
 newmtl Part133Mtl
 Material Color
+# Orange Floor In House
 Ka 0.511398 0.334458 0.108711
 Kd 0.511398 0.334458 0.108711
 Ks 0.0320877 0.0209856 0.00682109 
@@ -72,6 +78,7 @@ Ns 0
 
 newmtl Part105Mtl
 Material Color
+# Dark red
 Ka 0.280124 0.0697271 0.018913
 Kd 0.280124 0.0697271 0.018913
 Ks 0.0175764 0.00437503 0.0011867 
@@ -161,9 +168,10 @@ Ns 0
 
 newmtl Part47Mtl
 Material Color
+# Windows
 Ka 0.464741 0.65237 0.781751
 Kd 0.464741 0.65237 0.781751
-Ks 0.0291602 0.040933 0.049051 
+Ks 0.0291602 0.040933 0.049051
 
 d 1
 
@@ -171,6 +179,7 @@ Ns 0
 
 newmtl Part33Mtl
 Material Color
+# light grey stuff
 Ka 0.353741 0.363604 0.420508
 Kd 0.353741 0.363604 0.420508
 Ks 0.0221955 0.0228144 0.0263848 
@@ -181,6 +190,7 @@ Ns 0
 
 newmtl Part286Mtl
 Material Color
+# Pathway
 Ka 0.827726 0.487765 0.293216
 Kd 0.827726 0.487765 0.293216
 Ks 0.0519357 0.0306049 0.0183979 
@@ -188,9 +198,12 @@ Ks 0.0519357 0.0306049 0.0183979
 d 1
 
 Ns 0
+Pr 0.7
+Pm 0
 
 newmtl Meshesgameassetscube0011Mtl
 Material Color
+# Trashcan
 Ka 0.000107187 0.436813 0.84337
 Kd 0.000107187 0.436813 0.84337
 Ks 6.72548e-06 0.0274079 0.0529173 
@@ -201,6 +214,7 @@ Ns 0
 
 newmtl Part21Mtl
 Material Color
+# House Bricks
 Ka 0.579547 0.420508 0.190463
 Kd 0.579547 0.420508 0.190463
 Ks 0.0363637 0.0263848 0.0119506 
@@ -211,6 +225,7 @@ Ns 0
 
 newmtl S1Mtl
 Material Color
+# Coin S sign
 Ka 0.867136 0.487765 0.0356144
 Kd 0.867136 0.487765 0.0356144
 Ks 0.343454 0.193193 0.0141061 
@@ -218,6 +233,8 @@ Ks 0.343454 0.193193 0.0141061
 d 1
 
 Ns 0
+Pm 1
+Pr 0.2
 
 newmtl Tail1Mtl
 Material Color
@@ -235,6 +252,7 @@ map_d Tail1_diff.png
 
 newmtl Center1Mtl
 Material Color
+# Coin inner circle
 Ka 0.592438 0.20836 0.000261544
 Kd 0.592438 0.20836 0.000261544
 Ks 0.0371726 0.0130735 1.64106e-05 
@@ -242,6 +260,8 @@ Ks 0.0371726 0.0130735 1.64106e-05
 d 1
 
 Ns 0
+Pr 0.2
+Pm 1
 
 newmtl Spawnlocation2Mtl
 Material Color
@@ -259,6 +279,7 @@ map_d Spawnlocation2_diff.png
 
 newmtl 1Mtl
 Material Color
+# Coin Outer rim and vertical stripe
 Ka 0.867136 0.487765 0.0356144
 Kd 0.867136 0.487765 0.0356144
 Ks 0.0544085 0.0306049 0.00223463 
@@ -266,6 +287,8 @@ Ks 0.0544085 0.0306049 0.00223463
 d 1
 
 Ns 0
+Pm 1
+Pr 0.2
 
 newmtl Part250Mtl
 Material Color
@@ -289,6 +312,7 @@ Ns 0
 
 newmtl Part83Mtl
 Material Color
+# Roof
 Ka 0.560499 0.0169881 0.00775103
 Kd 0.560499 0.0169881 0.00775103
 Ks 0.0351686 0.00106592 0.000486339 
@@ -297,6 +321,7 @@ d 1
 
 Ns 0
 Pr 0
+Pm 0.4
 
 newmtl Part1Mtl
 Material Color

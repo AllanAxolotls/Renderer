@@ -577,6 +577,11 @@ BVH4 eindelijk gefixt, nu de snelheid omhoog knallen door sorting toe te voegen,
 SAH dan maar toevoegen.
 
 
+1-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:15-10:58 (duur: 2 uur, 43 min. ) ]
+Performance testen met xcode, nu kan er een App van worden gemaakt. Maar ik vind xcode niet fijn dus ik blijf nog aan de package werken.
+Ik weet niet echt veel meer over de performance helaas. Wel waren er een hoop dingen die xcode als error ziet die 'swift run' mist.
 
 =============================================================================================================================================
 

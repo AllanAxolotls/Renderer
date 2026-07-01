@@ -258,6 +258,7 @@ final class RayTracerRenderer: Renderer {
                 if sampleIndex == 0 {
                     let accumTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: drawable.texture.width, height: drawable.texture.height, mipmapped: false)
                     accumTextureDesc.usage = [.shaderWrite, .shaderRead]
+                    accumTextureDesc.storageMode = .private
                     accumTexture = device.makeTexture(descriptor: accumTextureDesc)
                 }     
                 if sampleIndex >= maxSamples { // Camera did not move and max samples reached so stop new GPU processing
@@ -284,7 +285,7 @@ final class RayTracerRenderer: Renderer {
                 encoder.setComputePipelineState(self.raytraceState)
                 encoder.setTexture(drawable.texture, index: 0)
                 encoder.setTexture(accumTexture, index: 1)
-                encoder.setSamplerState(self.pipelineBuilder.sampler, index: 0)
+                encoder.setTexture(accumTexture, index: 2)
                 
                 encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
                 encoder.setBuffer(materialBuffer, offset: 0, index: 1)

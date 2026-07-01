@@ -57,6 +57,7 @@ struct Material {
 };
 
 struct TextureCollection {
+    sampler samp;
     array<texture2d<float>, 128> textures;
 };
 
@@ -393,10 +394,9 @@ float3 sampleGGX(float2 randVal, float roughness, float3 normal) {
 
 
 kernel void raytrace(
-    //texture2d<half, access::write> output [[texture(0)]], // Display Output
-    texture2d<half, access::write> output [[texture(0)]], // noisy texture output
-    texture2d<float, access::read_write> accumTexture [[texture(1)]], // Light passes
-    sampler samp [[sampler(0)]],
+    texture2d<half, access::write> output [[texture(0)]], // display output
+    texture2d<float, access::read> lastAccumTexture [[texture(1)]], // Light passes
+    texture2d<float, access::write> accumTexture [[texture(2)]],
     
     device Uniforms* uniforms [[buffer(0)]],
     device Material* materials [[buffer(1)]],
@@ -471,7 +471,7 @@ kernel void raytrace(
             // Interpolated UV
             float2 uv = result.barycentric.x * hitFace.vertex1.uv + result.barycentric.y * hitFace.vertex2.uv + result.barycentric.z * hitFace.vertex3.uv;
             float pixelDissolve = material.dissolveTextureIndex == -1 ? material.dissolve : 
-                collection.textures[material.dissolveTextureIndex].sample(samp, uv).a;
+                collection.textures[material.dissolveTextureIndex].sample(collection.samp, uv).a;
 
             // Weird logic for dissolve, might need to change in the future
             if (pixelDissolve < 0.01f) {
@@ -480,8 +480,10 @@ kernel void raytrace(
                 continue; // Should not be consired a hit as there is no visible pixel, continue where left off
             }
             texture2d<float> tex = collection.textures[material.diffuseTextureIndex];
-            float4 texColor = tex.sample(samp, uv);
-            albedo = mix(material.diffuseColor.rgb, texColor.rgb, texColor.a); // Alpha Blend Texture with Material Color
+            float4 texColor = tex.sample(collection.samp, uv);
+
+            // texColor.rgb * material.diffuseColor.rgb for texture color, for decal functionality just do texColor.rgb
+            albedo = mix(material.diffuseColor.rgb, texColor.rgb * material.diffuseColor.rgb, texColor.a); // Alpha Blend Texture with Material Color
         }
 
         
@@ -562,7 +564,7 @@ kernel void raytrace(
     // This frame Color + previous frame Color
     float4 accumColor = float4(radiance.rgb, 1.0);
     if (sampleIndex > 0) {
-        float4 prevColor = accumTexture.read(gid);
+        float4 prevColor = lastAccumTexture.read(gid);
         accumColor += prevColor;
     }
 

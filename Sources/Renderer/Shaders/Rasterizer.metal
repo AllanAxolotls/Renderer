@@ -52,7 +52,7 @@ fragment float4 fmain(
     sampler samp [[sampler(0)]],
     constant Material& material [[buffer(2)]]
 ) {
-    float4 albedo = material.diffuseTextureIndex == -1 ? float4(material.diffuseColor, 1.0f) : tex.sample(samp, in.uv);
+    float4 albedo = material.diffuseTextureIndex == -1 ? float4(material.diffuseColor, 1.0f) : float4(material.diffuseColor, 1.0) * tex.sample(samp, in.uv);
     float factor = (dot(in.normal, float3(0, 1, 0)) + 1.0) * 0.5f;
     float3 shaded = albedo.rgb * (factor * 0.5 + 0.5);
     return float4(shaded, albedo.a * material.dissolve);

@@ -6,6 +6,7 @@
 - Xcode and Xcode-Tools Installed (compilation requires Metal which only the full app sadly has)
 - For saving images macOS version 11.0+ is required
 - For checking how long the GPU takes per frame, macOS version 10.15+ is required
+- Metal 3.0+
 
 To compile and run:
 `make run`

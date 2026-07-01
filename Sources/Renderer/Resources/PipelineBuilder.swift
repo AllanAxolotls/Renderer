@@ -39,7 +39,8 @@ final class PipelineBuilder {
         let bufferLength = argumentEncoder.encodedLength + (textureCount * MemoryLayout<UInt64>.size)
         let argumentBuffer = device.makeBuffer(length: bufferLength, options: [])!
         argumentEncoder.setArgumentBuffer(argumentBuffer, offset: 0)
-        argumentEncoder.setTextures(textures, range: 0..<textures.count)
+        argumentEncoder.setSamplerState(sampler, index: 0)
+        argumentEncoder.setTextures(textures, range: 1 ..< textureCount + 1)
         return (
             try! device.makeComputePipelineState(function: function), 
             argumentBuffer

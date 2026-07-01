@@ -17,7 +17,7 @@
         {
             "position": [0, 0, 5],
             "emission": [10, 10, 10],
-            "radius": 100
+            "radius": 0
         }
     ]
 }
