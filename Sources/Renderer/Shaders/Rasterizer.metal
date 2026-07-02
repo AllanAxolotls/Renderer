@@ -8,19 +8,22 @@ struct Vertex {
 };
 
 struct Material {
-    float3 ambientColor;
+    //float3 ambientColor; // currently unused
     float3 diffuseColor;
-    float3 specularColor;
+    //float3 specularColor; // currently unused
     float3 emissionColor;
-    int ambientTextureIndex;
-    int diffuseTextureIndex; // -1 = no texture
-    int specularTextureIndex;
-    int dissolveTextureIndex;
-    int bumpTextureIndex;
-    int illuminationModel;
+    //short ambientTextureIndex; // currently unused
+    short diffuseTextureIndex; // -1 = no texture
+    //short specularTextureIndex; // currently unused
+    short dissolveTextureIndex;
+    //short bumpTextureIndex; // currently unused
+    // need to add a normalTexture too
+    //short illuminationModel; // currently unused
     float dissolve;
-    float specularExponent;
-    float refractiveIndex;
+    //float emissionIntensity;
+    float roughness;
+    float metallic;
+    //float refractiveIndex; // IOR, currently unused
 };
 
 struct VSOut {

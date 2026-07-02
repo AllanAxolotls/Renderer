@@ -12,21 +12,21 @@ public struct Face {
 }
 
 public struct Material {
-    public var ambientColor: simd_float3 = simd_float3(1, 1, 1)
+    //public var ambientColor: simd_float3 = simd_float3(1, 1, 1)
     public var diffuseColor: simd_float3 = simd_float3(1, 1, 1)
-    public var specularColor: simd_float3 = simd_float3(1, 1, 1)
+    //public var specularColor: simd_float3 = simd_float3(1, 1, 1)
     public var emissionColor: simd_float3 = simd_float3(0, 0, 0)
-    public var ambientTextureIndex: Int32 = -1
-    public var diffuseTextureIndex: Int32 = -1 // -1 = No Texture
-    public var specularTextureIndex: Int32 = -1
-    public var dissolveTextureIndex: Int32 = -1
-    public var bumpTextureIndex: Int32 = -1
-    public var illuminationModel: Int32 = 2
+    //public var ambientTextureIndex: Int16 = -1
+    public var diffuseTextureIndex: Int16 = -1 // -1 = No Texture
+    //public var specularTextureIndex: Int16 = -1
+    public var dissolveTextureIndex: Int16 = -1
+    //public var bumpTextureIndex: Int16 = -1
+    //public var illuminationModel: Int16 = 2
     public var dissolve: Float = 1.0 // 1.0 = Opaque, 0.0 = Transparent
-    public var emissionIntensity: Float = 1
+    //public var emissionIntensity: Float = 1
     public var roughness: Float = 1
     public var metallic: Float = 0
-    public var refractiveIndex: Float = 1.0 // How much light bends
+    //public var refractiveIndex: Float = 1.0 // How much light bends
 }
 
 public struct SubMesh { // Submeshes are essentially DrawCalls, every drawcall has one material

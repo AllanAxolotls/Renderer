@@ -32,11 +32,8 @@ public struct RayTracerUniforms {
 }
 
 public struct RayTraceTriangleGPU {
+    public var vertex0: Vertex
     public var vertex1: Vertex
     public var vertex2: Vertex
-    public var vertex3: Vertex
-    public var edge1: simd_float3
-    public var edge2: simd_float3
-    public var normal: simd_float3
     public var materialIndex: Int32
 }

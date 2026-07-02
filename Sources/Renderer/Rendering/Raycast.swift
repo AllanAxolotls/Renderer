@@ -126,20 +126,20 @@ public func intersects4AABBs(
     return [tmin[0] <= tmax[0], tmin[1] <= tmax[1], tmin[2] <= tmax[2], tmin[3] <= tmax[3]]
 }
 
-public func intersectsFace(origin: simd_float3, direction: simd_float3, face: RayTraceTriangleGPU) -> RaycastResult {
-    let normal = face.normal
+public func intersectsFace(origin: simd_float3, direction: simd_float3, face: RayTraceTriangleGPU, vertices: [Vertex]) -> RaycastResult {
+    let vertex0 = face.vertex0.position
+    let edge1 = face.vertex1.position - vertex0
+    let edge2 = face.vertex2.position - vertex0
+    let normal = simd_cross(edge1, edge2)
     // Backface Culling, keeps CCW-wound triangles
     if simd_dot(normal, direction) > 0 { return RaycastResult() }
 
-    let edge1 = face.edge1
-    let edge2 = face.edge2
     let direction_cross_edge2 = simd_cross(direction, edge2)
     let det = simd_dot(edge1, direction_cross_edge2) // Triple Scalar Product
     if abs(det) < epsilon { return RaycastResult() }
 
     let invDet = 1.0 / det
-    let vertex1 = face.vertex1.position
-    let s = origin - vertex1
+    let s = origin - vertex0
     let u = invDet * simd_dot(s, direction_cross_edge2)
     if u < -epsilon || u - 1 > epsilon { return RaycastResult() }
 
@@ -185,7 +185,7 @@ final class BLAS {
         leafFaceOffset = 0
         //blasStartIndex = buildNodeBySplitMedian(faces: makeGPUFaces())
         blasStartIndex = nodeOffset
-        flattenBVH2(node: buildBVH2Node(faces: makeGPUFaces(), isRight: true))
+        flattenBVH2(node: buildBVH2Node(faces: makeGPUFaces(), isRight: true, vertices: scene.vertices))
     }
 
 
@@ -211,8 +211,8 @@ final class BLAS {
                             max: max(a.max, b.max)
                         )
                     }
-                        public func buildBVH2Node(faces: [RayTraceTriangleGPU], isRight: Bool) -> BLASNodeBVH2 {
-                        let bounds = computeBounds(faces: faces)
+                        public func buildBVH2Node(faces: [RayTraceTriangleGPU], isRight: Bool, vertices: [Vertex]) -> BLASNodeBVH2 {
+                        let bounds = computeBounds(faces: faces, vertices: vertices)
                         let node = BLASNodeBVH2(minBounds: bounds.min, maxBounds: bounds.max)
                         let faceCount = faces.count
                         
@@ -248,7 +248,7 @@ final class BLAS {
                                 binIdx = max(0, min(numBins - 1, binIdx))
                                 
                                 binCount[binIdx] += 1
-                                let faceB = computeBounds(faces: [face])
+                                let faceB = computeBounds(faces: [face], vertices: scene.vertices)
                                 binBounds[binIdx] = unionBounds(binBounds[binIdx], faceB)
                             }
                             
@@ -312,8 +312,8 @@ final class BLAS {
                     }
 
                     private func buildLeftRightNodes(_ node: BLASNodeBVH2, left: [RayTraceTriangleGPU], right: [RayTraceTriangleGPU], isRight: Bool) -> BLASNodeBVH2 {
-                        node.left = buildBVH2Node(faces: left, isRight: false)
-                        node.right = buildBVH2Node(faces: right, isRight: isRight)
+                        node.left = buildBVH2Node(faces: left, isRight: false, vertices: scene.vertices)
+                        node.right = buildBVH2Node(faces: right, isRight: isRight, vertices: scene.vertices)
                         return node
                     }
 
@@ -398,7 +398,7 @@ final class BLAS {
         blasNodes[nodeIndex] = blasNode
     }
 
-    public func buildNodeBySplitMedian(faces: [RayTraceTriangleGPU]) -> Int32 {
+    public func buildNodeBySplitMedian(faces: [RayTraceTriangleGPU], vertices: [Vertex]) -> Int32 {
         let startIndex = Int32(blasNodes.count)
 
         func buildLeaf(faces: [RayTraceTriangleGPU], index: Int) {
@@ -410,7 +410,7 @@ final class BLAS {
         }
 
         func splitMedian(splitFaces: [RayTraceTriangleGPU]) -> (left: [RayTraceTriangleGPU], right: [RayTraceTriangleGPU]) {
-            let bounds = computeBounds(faces: splitFaces)
+            let bounds = computeBounds(faces: splitFaces, vertices: vertices)
             let axis = longestAxis(bounds: bounds)
             let sorted = splitFaces.sorted { centroid($0)[axis] < centroid($1)[axis] }
             let middle = sorted.count / 2
@@ -427,7 +427,7 @@ final class BLAS {
         for (index, partition) in [partition0, partition1, partition2, partition3].enumerated() {
             if partition.count == 0 { continue }
 
-            let bounds = computeBounds(faces: partition)
+            let bounds = computeBounds(faces: partition, vertices: vertices)
             blasNodes[Int(startIndex)].minBoundsX[index] = bounds.min.x
             blasNodes[Int(startIndex)].minBoundsY[index] = bounds.min.y
             blasNodes[Int(startIndex)].minBoundsZ[index] = bounds.min.z
@@ -435,7 +435,7 @@ final class BLAS {
             blasNodes[Int(startIndex)].maxBoundsY[index] = bounds.max.y
             blasNodes[Int(startIndex)].maxBoundsZ[index] = bounds.max.z
             if partition.count > maxFacesInLeafBLASNode { // Becomes a branch
-                blasNodes[Int(startIndex)].childIndices[index] = buildNodeBySplitMedian(faces: partition)
+                blasNodes[Int(startIndex)].childIndices[index] = buildNodeBySplitMedian(faces: partition, vertices: vertices)
             } else { // Leaf node
                 buildLeaf(faces: partition, index: index)
             }
@@ -444,7 +444,7 @@ final class BLAS {
         return startIndex + nodeOffset
     }
 
-    public func computeBounds(faces: [RayTraceTriangleGPU]) -> (min: simd_float3, max: simd_float3) {
+    public func computeBounds(faces: [RayTraceTriangleGPU], vertices: [Vertex]) -> (min: simd_float3, max: simd_float3) {
         var minV = simd_float3(repeating: Float.greatestFiniteMagnitude)
         var maxV = simd_float3(repeating: -Float.greatestFiniteMagnitude)
 
@@ -454,9 +454,9 @@ final class BLAS {
         }
 
         for face in faces {
+            include(face.vertex0.position)
             include(face.vertex1.position)
             include(face.vertex2.position)
-            include(face.vertex3.position)
         }
 
         return (min: minV, max: maxV)
@@ -474,7 +474,7 @@ final class BLAS {
     }
 
     private func centroid(_ face: RayTraceTriangleGPU) -> simd_float3 {
-        return (face.vertex1.position + face.vertex2.position + face.vertex3.position) / 3.0
+        return (face.vertex0.position + face.vertex1.position + face.vertex2.position) / 3.0
     }
 
     public func makeGPUFaces() -> [RayTraceTriangleGPU] {
@@ -482,16 +482,16 @@ final class BLAS {
         for faceIndex in mesh.faceOffset ..< mesh.faceOffset + mesh.faceCount {
             let face = scene.faces[Int(faceIndex)]
             let subMesh = scene.subMeshes[Int(face.subMeshIndex)]
-            let vertex1 = scene.vertices[Int(face.vertexIndices.x)]
-            let vertex2 = scene.vertices[Int(face.vertexIndices.y)]
-            let vertex3 = scene.vertices[Int(face.vertexIndices.z)]
-            let edge1 = vertex2.position - vertex1.position
-            let edge2 = vertex3.position - vertex1.position
+            let vertex0 = scene.vertices[Int(face.vertexIndices.x)]
+            let vertex1 = scene.vertices[Int(face.vertexIndices.y)]
+            let vertex2 = scene.vertices[Int(face.vertexIndices.z)]
+            //let edge1 = vertex2.position - vertex1.position
+            //let edge2 = vertex3.position - vertex1.position
             faces.append(RayTraceTriangleGPU(
-                vertex1: vertex1, vertex2: vertex2, vertex3: vertex3, 
-                edge1: edge1, edge2: edge2,
+                vertex0: vertex0, vertex1: vertex1, vertex2: vertex2, 
+                //edge1: edge1, edge2: edge2,
                 // TODO: Change to 3 normals in future
-                normal: simd_normalize(simd_cross(edge1, edge2)),
+                //normal: simd_normalize(simd_cross(edge1, edge2)),
                 materialIndex: subMesh.materialIndex
             ))
         }
@@ -593,7 +593,7 @@ final class TLAS {
                 if node.childIndices[index] == -1 {
                     for j in node.faceOffsets[index] ..< node.faceCounts[index] + node.faceOffsets[index] {
                         let face = faces[Int(j)]
-                        var result = intersectsFace(origin: origin, direction: direction, face: face)
+                        var result = intersectsFace(origin: origin, direction: direction, face: face, vertices: scene.vertices)
                         if result.distance < closest.distance {
                             result.faceIndex = j
                             closest = result

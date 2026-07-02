@@ -583,6 +583,37 @@ SAH dan maar toevoegen.
 Performance testen met xcode, nu kan er een App van worden gemaakt. Maar ik vind xcode niet fijn dus ik blijf nog aan de package werken.
 Ik weet niet echt veel meer over de performance helaas. Wel waren er een hoop dingen die xcode als error ziet die 'swift run' mist.
 
+[ 11:15-13:13 (duur: 1 uur, 58 min. ) ]
+Paar bug fixes, er is nog steeds een bug dat de spawnpoint in RobloxWorld2 niet laadt. Ook is de rasterizer slecht qua performane met grote
+mappen dus ik wil dat echt gaan tacklen. Misschien iets met streaming enzo. Daarnaast wil ik BLAS's opslaan per mesh in files zodat ze niet elke
+keer hoeven te worden gecomputeerd.
+
+
+2-6-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:46-14:10 (duur: 24 min. ) ]
+Tot nu toe gebruik ik RGB raytracing, maar ik wil overstappen naar puur golflengte zodat het veel accurater wordt.
+Waarom golflengtes dingen kunnen die een RGB Raytracer niet kan (zo een soort ray tracer heet een "Spectral Ray tracer") 
+https://larswander.com/writing/spectral-ray-tracing/
+Physically Based Rendering gaat hier ook op in
+https://pbr-book.org/4ed/Radiometry,_Spectra,_and_Color/Color
+Ramen werden niet transparant gerendered omdat ik de epsilon waarde te laag had gezet waardor de ray nooit het raam passeert. Ik heb dat nu gefixt
+
+[ 14:40-17:22 (duur: 2 uur, 42 min. ) ]
+Optimisations maken voor Raytracer.metal
+Object Importer aangepast zodat "o" in .obj files niet worden overgeslagen, waardoor mijn Typical scene eindelijk werkt! 
+Ik probeer het verder te optimizen maar ik heb het tegengestelde gedaan helaas
+
+
+[ 23:00-00:54 (duur: 1 uur, 54 min. ) ]
+Hoe de Faces orgineel zijn gestructured werkt het beste, quantization toevoegen zou het nog verder kunnen verbeteren, maar ik ben bang dat
+het voor andere problemen zal zorgen
+
+
+
+TODO: Verander IndexedFace naar TraversalFace, houd vertices + materialIndex
+als hit: shading array die direct naar UV en Normal indexed, shadingFaces[faceIndex] = vertexIndex
+
 =============================================================================================================================================
 
 TODO:

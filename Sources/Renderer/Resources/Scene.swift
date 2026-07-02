@@ -54,7 +54,7 @@ public class Scene: @unchecked Sendable {
             newMeshes[i].vertexOffset += Int32(truncatingIfNeeded: self.vertices.count)
         }
         for i in 0..<newMaterials.count {
-            newMaterials[i].diffuseTextureIndex += Int32(truncatingIfNeeded: self.textures.count)
+            newMaterials[i].diffuseTextureIndex += Int16(self.textures.count)
         }
 
         self.vertices.append(contentsOf: newVertices)

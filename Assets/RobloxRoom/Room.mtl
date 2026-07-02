@@ -956,9 +956,11 @@ map_Ns Part55_spec.png
 
 newmtl Part10Mtl
 Material Color
+# Neon lamps
 Ka 0 1 1
 Kd 0 1 1
-Ks 0 0.0901961 0.0901961 
+Ks 0 0.0901961 0.0901961
+Ke 0 12 12
 
 d 1
 

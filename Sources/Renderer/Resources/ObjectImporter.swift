@@ -22,7 +22,7 @@ private func toByte(_ x: Float) -> UInt8 {
     return UInt8(clamped)
 }
 
-private func make1x1Texture(device: MTLDevice, textures: inout [MTLTexture], colorIndexCache: inout [simd_float3 : Int32], colorTextureCache: inout [simd_float3: MTLTexture], color: simd_float3) -> (MTLTexture, Int32) {
+private func make1x1Texture(device: MTLDevice, textures: inout [MTLTexture], colorIndexCache: inout [simd_float3 : Int16], colorTextureCache: inout [simd_float3: MTLTexture], color: simd_float3) -> (MTLTexture, Int16) {
     if let existing = colorTextureCache[color] { return (existing, colorIndexCache[color]!) }
 
     let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -45,7 +45,7 @@ private func make1x1Texture(device: MTLDevice, textures: inout [MTLTexture], col
     )
 
     colorTextureCache[color] = texture
-    let index = Int32(truncatingIfNeeded: textures.count)
+    let index = Int16(textures.count)
     textures.append(texture)
     colorIndexCache[color] = index
 
@@ -55,13 +55,13 @@ private func make1x1Texture(device: MTLDevice, textures: inout [MTLTexture], col
 
 private class TextureImporter {
     public var textures: [MTLTexture] = []
-    public var nameToIndices: [String : Int32] = [:]
+    public var nameToIndices: [String : Int16] = [:]
     public var fallbackTexture: MTLTexture
     private let device: MTLDevice
     private let mtkTextureLoader: MTKTextureLoader
 
     private var colorTextureCache: [simd_float3: MTLTexture] = [:]
-    private var colorIndexCache: [simd_float3: Int32] = [:]
+    private var colorIndexCache: [simd_float3: Int16] = [:]
 
     init(device: MTLDevice) {
         self.device = device
@@ -69,13 +69,13 @@ private class TextureImporter {
         (self.fallbackTexture, _) = make1x1Texture(device: device, textures: &textures, colorIndexCache: &colorIndexCache, colorTextureCache: &colorTextureCache, color: simd_float3(1, 1, 1))
     }
 
-    public func getTexture(_ filePath: String) -> (MTLTexture?, Int32?) {
+    public func getTexture(_ filePath: String) -> (MTLTexture?, Int16?) {
         if let index = nameToIndices[filePath] {
             return (textures[Int(index)], index)
         }
         return (nil, nil)
     }
-    public func getTextureIndex(_ filePath: String) -> Int32? {
+    public func getTextureIndex(_ filePath: String) -> Int16? {
         return nameToIndices[filePath]
     }
 
@@ -100,11 +100,11 @@ private class TextureImporter {
         }
     }
 
-    public func importTexture(filePath: String) -> (MTLTexture, Int32) {
+    public func importTexture(filePath: String) -> (MTLTexture, Int16) {
         let (existingTexture, existingIndex) = getTexture(filePath)
         if existingTexture != nil { return (existingTexture!, existingIndex!) }
         if let texture = loadTexture(filePath: filePath) {
-            let index = Int32(truncatingIfNeeded: textures.count)
+            let index = Int16(textures.count)
             nameToIndices[filePath] = index
             textures.append(texture)
             return (texture, index)
@@ -113,7 +113,7 @@ private class TextureImporter {
         return (textures[0], 0)
     }
 
-    public func getColorTexture(color: simd_float3) -> (MTLTexture, Int32) {
+    public func getColorTexture(color: simd_float3) -> (MTLTexture, Int16) {
         return make1x1Texture(device: device, textures: &textures, colorIndexCache: &colorIndexCache, colorTextureCache: &colorTextureCache, color: color)
     }
 }
@@ -162,24 +162,24 @@ public class MaterialImporter {
 
             switch command {
             case "#": continue parseLine
-            case "Ka": currentMaterial.ambientColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
+            //case "Ka": currentMaterial.ambientColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
             case "Kd": currentMaterial.diffuseColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
-            case "Ks": currentMaterial.specularColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
+            //case "Ks": currentMaterial.specularColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
             case "Ke": currentMaterial.emissionColor = simd_float3(Float(tokens[1])!, Float(tokens[2])!, Float(tokens[3])!)
-            case "map_Ka": (_, currentMaterial.ambientTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+            //case "map_Ka": (_, currentMaterial.ambientTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
             case "map_Kd":
                 (_, currentMaterial.diffuseTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
                 //currentMaterialHasDiffuseTexture = true
-            case "map_Ks": (_, currentMaterial.specularTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+            //case "map_Ks": (_, currentMaterial.specularTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
             case "map_d": (_, currentMaterial.dissolveTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
-            case "map_Bump": (_, currentMaterial.bumpTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
-            case "illum": currentMaterial.illuminationModel = Int32(tokens[1])!
+            //case "map_Bump": (_, currentMaterial.bumpTextureIndex) = textureImporter.importTexture(filePath: mtlDirURL.appendingPathComponent(tokens[1]).path)
+            //case "illum": currentMaterial.illuminationModel = Int16(tokens[1])!
             case "d": currentMaterial.dissolve = Float(tokens[1])!
             case "Tr": currentMaterial.dissolve = 1.0 - Float(tokens[1])!
             case "Ns": currentMaterial.roughness = 1// 1 - pow(2 / (Float(tokens[1])! + 2), 1/4)
             case "Pr": currentMaterial.roughness = Float(tokens[1])!
             case "Pm": currentMaterial.metallic = Float(tokens[1])!
-            case "Ni": currentMaterial.refractiveIndex = Float(tokens[1])!
+            //case "Ni": currentMaterial.refractiveIndex = Float(tokens[1])!
             // case "sharpness":
             // case "Tf":
             // case "refl":
@@ -373,7 +373,9 @@ public class ObjectImporter {
                 }
                 
                 if vertexAttributes4 == nil { newTriangle() } else { newQuad() }
-            case "o": continue parseLine // Model
+            case "o": 
+                pushSubMesh()
+                pushMesh()
             case "g":
                 pushSubMesh()
                 pushMesh()
