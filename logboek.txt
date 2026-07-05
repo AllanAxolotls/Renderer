@@ -589,7 +589,7 @@ mappen dus ik wil dat echt gaan tacklen. Misschien iets met streaming enzo. Daar
 keer hoeven te worden gecomputeerd.
 
 
-2-6-2026
+2-7-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
 [ 13:46-14:10 (duur: 24 min. ) ]
 Tot nu toe gebruik ik RGB raytracing, maar ik wil overstappen naar puur golflengte zodat het veel accurater wordt.
@@ -609,6 +609,20 @@ Ik probeer het verder te optimizen maar ik heb het tegengestelde gedaan helaas
 Hoe de Faces orgineel zijn gestructured werkt het beste, quantization toevoegen zou het nog verder kunnen verbeteren, maar ik ben bang dat
 het voor andere problemen zal zorgen
 
+
+3-7-2027
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:06-09:02 (duur: 56 min.) ]
+Porbeerde andere kleine optimisations maar was niet effectief
+
+
+5-7-2027
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 14:00-14:53 (duur: 53 min. ) ]
+Sample Count in window title i.p.v. printen.
+Bij raytracing is er nu een scalefactor op de window die ervoor zorgt dat lagere resoluties met de zelfde
+window size kunnen worden gerendered. (60 FPS soms wel, maar wel lage kwaliteit!)
+Dead pixels gefixt (Wanneer nan of inf de radiance beinvloedt), maxSamples naar 1000 gebracht. 
 
 
 TODO: Verander IndexedFace naar TraversalFace, houd vertices + materialIndex

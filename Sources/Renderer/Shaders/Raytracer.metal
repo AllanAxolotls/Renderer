@@ -85,11 +85,11 @@ struct TLASNode {
 
 struct RaycastResult {
     float3 hit;
-    float3 normal;
+    //float3 normal;
     float distance;
     float3 barycentric;
     int faceIndex;
-    int instanceIndex;
+    //int instanceIndex;
 };
 
 inline bool intersectsAABB(float3 origin, float3 invDirection, float3 minBounds, float3 maxBounds) {
@@ -186,8 +186,8 @@ inline RaycastResult intersectsFace(float3 origin, float3 direction, device cons
     float t = invDet * dot(edge2, sCrossEdge1);
     if (t > epsilon) { // && t <= 1) { // if t > 1 then ray is longer than segment length
         return RaycastResult{
-            .hit = origin + direction * t, 
-            .normal = normal, 
+            //.hit = origin + direction * t, 
+            //.normal = normal, 
             .distance = t,
             .barycentric = float3(1.0-u-v, u, v),
         };
@@ -196,8 +196,38 @@ inline RaycastResult intersectsFace(float3 origin, float3 direction, device cons
     return RaycastResult { .distance = INFINITY };
 }
 
+inline float intersectsFaceDistance(float3 origin, float3 direction, device const Face& face) {
+    float3 vertex0 = face.vertex0.position;
+    float3 edge1 = face.vertex1.position - vertex0;
+    float3 edge2 = face.vertex2.position - vertex0;
+     // Backface Culling, keeps CCW-wound triangles
+    float3 normal = cross(edge1, edge2);
+    if (dot(normal, direction) > 0) { return INFINITY; }
+
+    float3 directionCrossEdge2 = cross(direction, edge2);
+    float det = dot(edge1, directionCrossEdge2);
+    if (abs(det) < epsilon) { return INFINITY; }
+
+    float invDet = 1.0 / det;
+    float3 s = origin - vertex0;
+    float u = invDet * dot(s, directionCrossEdge2);
+    if (u < -epsilon || u - 1 > epsilon) { return INFINITY; }
+
+    float3 sCrossEdge1 = cross(s, edge1);
+    float v = invDet * dot(direction, sCrossEdge1);
+    if (v < -epsilon || u + v - 1 > epsilon) { return INFINITY; }
+
+    float t = invDet * dot(edge2, sCrossEdge1);
+    if (t > epsilon) { // && t <= 1) { // if t > 1 then ray is longer than segment length
+        return t;
+    }
+
+    return INFINITY;
+}
+
 inline void processBLASLeaf(float3 origin, float3 direction, device const BLASNode& node, thread RaycastResult& closest, int i, device const Face* faces) {
-    for (int j = node.faceOffsets[i]; j < node.faceCounts[i] + node.faceOffsets[i]; ++j) {
+    int stop = node.faceCounts[i] + node.faceOffsets[i];
+    for (int j = node.faceOffsets[i]; j < stop; ++j) {
         device const Face& face = faces[j];
         RaycastResult result = intersectsFace(origin, direction, face);
         if (result.distance < closest.distance) {
@@ -214,7 +244,7 @@ RaycastResult traverseBLAS(
 ) {
     int nodeIndex = blasStartIndex;
     uint stackPtr = 0;
-    int stack[32];
+    int stack[16];
 
     RaycastResult closest = RaycastResult { .distance = INFINITY };
 
@@ -227,14 +257,14 @@ RaycastResult traverseBLAS(
         );
         bool4 validHit = hits < float4(closest.distance);
 
-        int child0 = node.childIndices[0]; // float dist0 = hits[0];
-        int child1 = node.childIndices[1]; // float dist1 = hits[1];
-        int child2 = node.childIndices[2]; // float dist2 = hits[2];
-        int child3 = node.childIndices[3]; // float dist3 = hits[3];
+        /*
+        int child0 = node.childIndices[0]; float dist0 = hits[0];
+        int child1 = node.childIndices[1]; float dist1 = hits[1];
+        int child2 = node.childIndices[2]; float dist2 = hits[2];
+        int child3 = node.childIndices[3]; float dist3 = hits[3];
         int i0 = 0, i1 = 1, i2 = 2, i3 = 3;
 
         // Swapping does not seem to improve performance, it only adds ~30ms 
-        /*
         #define SWAP(a, b, t_a, t_b, i_a, i_b) if (a > b) { float temp = a; a = b; b = temp; int temp_t = t_a; t_a = t_b; t_b = temp_t; int temp_i = i_a; i_a = i_b; i_b = temp_i; }
         SWAP(dist0, dist1, child0, child1, i0, i1);
         SWAP(dist2, dist3, child2, child3, i2, i3);
@@ -242,7 +272,6 @@ RaycastResult traverseBLAS(
         SWAP(dist1, dist3, child1, child3, i1, i3);
         SWAP(dist1, dist2, child1, child2, i1, i2);
         #undef SWAP
-        */
 
         if (validHit[0]) {
             if (child0 == -1) processBLASLeaf(origin, direction, node, closest, i0, faces); 
@@ -259,10 +288,33 @@ RaycastResult traverseBLAS(
         if (validHit[3]) {
             if (child3 == -1) processBLASLeaf(origin, direction, node, closest, i3, faces); 
             else stack[stackPtr++] = child3;
+        }*/
+
+        int child0 = node.childIndices[0];
+        if (validHit[0]) {
+            if (child0 == -1) processBLASLeaf(origin, direction, node, closest, 0, faces); 
+            else stack[stackPtr++] = child0;
+        }
+        int child1 = node.childIndices[1];
+        if (validHit[1]) {
+            if (child1 == -1) processBLASLeaf(origin, direction, node, closest, 1, faces); 
+            else stack[stackPtr++] = child1;
+        }
+        int child2 = node.childIndices[2];
+        if (validHit[2]) {
+            if (child2 == -1) processBLASLeaf(origin, direction, node, closest, 2, faces); 
+            else stack[stackPtr++] = child2;
+        }
+        int child3 = node.childIndices[3];
+        if (validHit[3]) {
+            if (child3 == -1) processBLASLeaf(origin, direction, node, closest, 3, faces); 
+            else stack[stackPtr++] = child3;
         }
 
         nodeIndex = (stackPtr != 0) ? stack[--stackPtr] : -1;
     }
+
+    closest.hit = origin + direction * closest.distance;
 
     return closest;
 }
@@ -275,7 +327,7 @@ RaycastResult traverseTLAS(
 ) {
     int nodeIndex = 0;
     uint stackPtr = 0;
-    int stack[32];
+    int stack[16];
 
     RaycastResult closest = RaycastResult { .distance = INFINITY };
 
@@ -290,7 +342,6 @@ RaycastResult traverseTLAS(
         float4 origin4 = float4(origin, 1.0);
         float4 direction4 = float4(direction, 0.0);
 
-        #pragma unroll
         for (int i = 0; i < 4; i++) {
             float hit = hits[i];
             if (hit == INFINITY) continue;
@@ -314,8 +365,8 @@ RaycastResult traverseTLAS(
 
                         if (result.distance < closest.distance) {
                             result.hit = worldHit;
-                            result.normal = normalize(tlasInstance.invNormalMatrix * result.normal);
-                            result.instanceIndex = instanceIndex;
+                            //result.normal = normalize(tlasInstance.invNormalMatrix * result.normal);
+                            //result.instanceIndex = instanceIndex;
                             closest = result;
                         }
                     }               
@@ -332,6 +383,93 @@ RaycastResult traverseTLAS(
     }
 
     return closest;
+}
+
+bool shadowTraverseBLAS(
+    float3 origin, float3 direction, float3 invDirection,
+    device const BLASNode* blasNodes, int blasStartIndex, device const Face* faces
+) {
+    int nodeIndex = blasStartIndex;
+    uint stackPtr = 0;
+    int stack[16];
+
+    while (nodeIndex != -1) {
+        device const BLASNode& node = blasNodes[nodeIndex];
+        float4 hits = intersects4AABBs(
+            origin, invDirection,
+            node.minBoundsX, node.minBoundsY, node.minBoundsZ,
+            node.maxBoundsX, node.maxBoundsY, node.maxBoundsZ
+        );
+
+        for (int i = 0; i < 4; i++) {
+            if (hits[i] == INFINITY) continue;
+            int child = node.childIndices[i];
+            
+            if (child == -1) {
+                // Leaf: check triangles
+                int stop = node.faceCounts[i] + node.faceOffsets[i];
+                for (int j = node.faceOffsets[i]; j < stop; ++j) {
+                    if (intersectsFaceDistance(origin, direction, faces[j]) != INFINITY) {
+                        return true;
+                    }
+                }
+            } else {
+                stack[stackPtr++] = child;
+            }
+        }
+        nodeIndex = (stackPtr != 0) ? stack[--stackPtr] : -1;
+    }
+
+    return false;
+}
+
+bool shadowTraverseTLAS(
+    float3 origin, float3 direction, float3 invDirection, 
+    device const TLASNode* tlasNodes, device const TLASInstance* tlasInstances, 
+    device const BLASNode* blasNodes, device const Face* faces
+) {
+    int nodeIndex = 0;
+    uint stackPtr = 0;
+    int stack[16];
+
+    while (nodeIndex != -1) {
+        device const TLASNode& node = tlasNodes[nodeIndex];
+        float4 hits = intersects4AABBs(
+            origin, invDirection,
+            node.minBoundsX, node.minBoundsY, node.minBoundsZ,
+            node.maxBoundsX, node.maxBoundsY, node.maxBoundsZ
+        );
+
+        float4 origin4 = float4(origin, 1.0);
+        float4 direction4 = float4(direction, 0.0);
+
+        for (int i = 0; i < 4; i++) {
+            if (hits[i] == INFINITY) continue;
+
+            if (node.childIndices[i] == -1) { // is the hit a Leaf
+                int instanceIndex = node.tlasInstanceIndices[i];
+
+                if (instanceIndex != -1) {
+                    device const TLASInstance& tlasInstance = tlasInstances[instanceIndex];
+                    float3 localOrigin = (tlasInstance.invModelMatrix * origin4).xyz;
+                    float3 localDirection = normalize((tlasInstance.invModelMatrix * direction4).xyz);
+                    float3 localInvDirection = 1.0 / localDirection;
+                    if (shadowTraverseBLAS(localOrigin, localDirection, localInvDirection, blasNodes, tlasInstance.blasStartIndex, faces)) {
+                        return true;
+                    }
+                } 
+            } else { // Branch Node
+                stack[stackPtr++] = node.childIndices[i];
+            }
+        }
+
+        nodeIndex = -1;
+        if (stackPtr != 0) {
+            nodeIndex = stack[--stackPtr];
+        }
+    }
+
+    return false;
 }
 
 
@@ -446,8 +584,8 @@ kernel void raytrace(
         device const Material& material = materials[hitFace.materialIndex];
 
         // Emissive Materials
-        if (length(material.emissionColor.rgb) > epsilon) {
-            radiance += throughput * material.emissionColor.rgb;
+        radiance += throughput * material.emissionColor.rgb;
+        if (material.emissionColor.r + material.emissionColor.g + material.emissionColor.b != 0) {
             break;
         }
 
@@ -502,9 +640,8 @@ kernel void raytrace(
         // Next Event Estimation
         float normalDotLight = max(dot(normal, sunDirection), 0.0);
         if (normalDotLight > 0.0) {
-            RaycastResult shadowResult = traverseTLAS(result.hit + normal * epsilon, sunDirection, invSunDirection, tlasNodes, tlasInstances, blasNodes, faces);
-            bool sunVisible = shadowResult.distance == INFINITY;
-            if (sunVisible) {
+            bool inShadow = shadowTraverseTLAS(result.hit + normal * epsilon, sunDirection, invSunDirection, tlasNodes, tlasInstances, blasNodes, faces);
+            if (!inShadow) {
                 // Compute the Fresnel response relative to the incoming light vector
                 float cosThetaLight = clamp(dot(sunDirection, normal), 0.0, 1.0);
                 float base = clamp(1.0 - cosThetaLight, 0.0, 1.0);
@@ -531,15 +668,14 @@ kernel void raytrace(
         rayOrigin = result.hit + normal * epsilon; 
         float2 bounceRand = random2(rngState);
 
-        if (random(rngState) < specularProbability) {
-            // 1. SPECULAR ROUTE (GGX Importance Sampling)
+        if (random(rngState) < specularProbability) { // Specular
+            // (GGX Importance Sampling)
             // Clamp roughness slightly to prevent division-by-zero on smooth mirrors
             float roughness = max(material.roughness, 0.001f);
             
             // Generate a microfacet normal oriented matching GGX distribution profile
             float3 halfwayVector = sampleGGX(bounceRand, roughness, normal);
             
-            // Reflect incoming ray over the microfacet normal
             rayDirection = reflect(rayDirection, halfwayVector);
 
             // Back-face reflection safety check
@@ -549,8 +685,7 @@ kernel void raytrace(
 
             // Weight updates through calculated Fresnel energy split
             throughput *= F / specularProbability;
-        } else {
-            // 2. DIFFUSE ROUTE (Cosine Weighted Hemisphere)
+        } else { // Diffuse
             rayDirection = cosineWeightedHemisphere(normal, bounceRand);
             
             // Core Lambertian diffuse energy weight calculation
@@ -561,6 +696,10 @@ kernel void raytrace(
         invRayDirection = 1.0 / rayDirection;
     }
 
+    if (any(isnan(radiance)) || any(isinf(radiance))) {
+        radiance = float3(0.0, 0.0, 0.0);
+    }
+    
     // This frame Color + previous frame Color
     float4 accumColor = float4(radiance.rgb, 1.0);
     if (sampleIndex > 0) {

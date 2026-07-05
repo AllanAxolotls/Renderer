@@ -44,8 +44,23 @@ class ViewController: NSViewController, MTKViewDelegate {
             case .Rasterizer: 
                 currentRenderer = rasterRenderer
                 raytracerRenderer.invalidateAccumulation()
+
+                gameView.autoResizeDrawable = true
+                gameView.drawableSize = CGSize(
+                    width: view.bounds.width * (view.window?.screen?.backingScaleFactor ?? 1), 
+                    height: view.bounds.height * (view.window?.screen?.backingScaleFactor ?? 1)
+                )
+
             case .Raytracer: 
                 currentRenderer = raytracerRenderer
+
+                // To downscale the image size when Raytracing
+                gameView.autoResizeDrawable = false
+                let scaleFactor: CGFloat = 0.25
+                gameView.drawableSize = CGSize(
+                    width: view.bounds.width * (view.window?.screen?.backingScaleFactor ?? 1) * scaleFactor, 
+                    height: view.bounds.height * (view.window?.screen?.backingScaleFactor ?? 1) * scaleFactor
+                )
         }
         gameView.updateControls(camera: &scene.camera)
         currentRenderer.draw(view: view, commandQueue: commandQueue)

@@ -45,7 +45,7 @@ final class PipelineBuilder {
             try! device.makeComputePipelineState(function: function), 
             argumentBuffer
         )
-     }
+    }
 
     private func configureBlending(_ desc: MTLRenderPipelineDescriptor) {
         let attachment = desc.colorAttachments[0]!

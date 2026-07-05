@@ -5,9 +5,9 @@ import UniformTypeIdentifiers
 private let outputImageName = "output.png"
 private let raytraceOnCPU: Bool = false // If true, the CPU does the raytracing of one frame and saves it as outputImageName, then exits the program immediately
 private let saveAndExitOnGPU: Bool = false // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
-private let maxSamples: Int32 = 100
+private let maxSamples: Int32 = 1000
 private let printCPUProgressEveryRow: Bool = true
-private let benchmarkGPUTime: Bool = true
+private let benchmarkGPUTime: Bool = false
 
 /*
 private func toByte(_ x: Float) -> UInt8 {
@@ -239,19 +239,16 @@ final class RayTracerRenderer: Renderer {
                     lastCameraForward = scene.camera.forward
                     lastCameraUp = scene.camera.up
                     cameraChanged = true
-                    print("Camera Moved, Sample Invalidated")
                 }
                 let windowResolutionChanged = lastWidth != drawable.texture.width || lastHeight != drawable.texture.height 
                 if windowResolutionChanged {
                     lastWidth = drawable.texture.width
                     lastHeight = drawable.texture.height
-                    print("Window Resized, Sample Invalidated")
                 }
                 let sceneChanged: Bool = scene.tlasReformed
                 if sceneChanged {
                     updateGPUBuffers()
                     scene.tlasReformed = false
-                    print("Scene Changed, Sample Invalidated")
                 }
 
                 sampleIndex = (cameraChanged || windowResolutionChanged || sceneChanged) ? 0 : sampleIndex + 1
@@ -264,7 +261,10 @@ final class RayTracerRenderer: Renderer {
                 if sampleIndex >= maxSamples { // Camera did not move and max samples reached so stop new GPU processing
                     return
                 } else {
-                    print("Sampling Index: \(sampleIndex)")
+                    if let window = view.window {
+                        window.title = "Raytracer - Sample \(sampleIndex + 1) / \(maxSamples)"
+                    }
+                    //print("Sampling Index: \(sampleIndex)")
                 }
 
                 // The Render Commands
