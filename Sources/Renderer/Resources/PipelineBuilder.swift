@@ -15,7 +15,7 @@ final class PipelineBuilder {
         let desc = MTLRenderPipelineDescriptor()
         desc.vertexFunction = lib.makeFunction(name: "vmain")
         desc.fragmentFunction = lib.makeFunction(name: "fmain")
-        desc.colorAttachments[0].pixelFormat = .bgra8Unorm
+        desc.colorAttachments[0].pixelFormat = .bgra8Unorm_srgb
         configureBlending(desc)
 
         let sampDesc = MTLSamplerDescriptor()
@@ -35,6 +35,7 @@ final class PipelineBuilder {
         let argumentEncoder = function.makeArgumentEncoder(bufferIndex: 6)
 
         let textureCount = textures.count
+        // TODO: make this variable, instead of stuck
         print("Texture Count: \(textureCount)")
         let bufferLength = argumentEncoder.encodedLength + (textureCount * MemoryLayout<UInt64>.size)
         let argumentBuffer = device.makeBuffer(length: bufferLength, options: [])!
@@ -53,7 +54,7 @@ final class PipelineBuilder {
         attachment.rgbBlendOperation = .add
         attachment.alphaBlendOperation = .add
         attachment.sourceRGBBlendFactor = .sourceAlpha
-        attachment.sourceAlphaBlendFactor = .sourceAlpha
+        attachment.sourceAlphaBlendFactor = .one
         attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
         attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
     }

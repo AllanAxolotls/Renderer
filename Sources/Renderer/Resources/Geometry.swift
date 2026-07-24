@@ -27,6 +27,7 @@ public struct Material {
     public var roughness: Float = 1
     public var metallic: Float = 0
     //public var refractiveIndex: Float = 1.0 // How much light bends
+    public var isSky: Int16 = 0; // 1 = true, 0 = false
 }
 
 public struct SubMesh { // Submeshes are essentially DrawCalls, every drawcall has one material

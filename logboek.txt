@@ -610,13 +610,13 @@ Hoe de Faces orgineel zijn gestructured werkt het beste, quantization toevoegen 
 het voor andere problemen zal zorgen
 
 
-3-7-2027
+3-7-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
 [ 08:06-09:02 (duur: 56 min.) ]
 Porbeerde andere kleine optimisations maar was niet effectief
 
 
-5-7-2027
+5-7-2026
 ---------------------------------------------------------------------------------------------------------------------------------------------
 [ 14:00-14:53 (duur: 53 min. ) ]
 Sample Count in window title i.p.v. printen.
@@ -625,8 +625,46 @@ window size kunnen worden gerendered. (60 FPS soms wel, maar wel lage kwaliteit!
 Dead pixels gefixt (Wanneer nan of inf de radiance beinvloedt), maxSamples naar 1000 gebracht. 
 
 
+6-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 12:00-12:51 (duur: 51 min. ) ]
+beginsel aan mesh editing.
+Ik vind de architectuur op dit moment niet fijn, alles is nog te afhankelijk
+van elkaar
+
+
+24-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:32-12:37 (duur: 1 uur, 5 min. ) ]
+Ik probeer een bug te fixen waardoor de rasterizer of UV verkeerd projecteerd, of verkeerd
+textures bind, verschrikkelijk. Waarschijnlijk is het de object importer met de 100 verschillende
+offsets en counts. 
+
+[ 12:50-16:30 (duur: 3 uur, 40 min. ) ]
+Het bleek te liggen aan het feit dat ik pushSubmesh deed NA het materiaal te pakken, wat het materiaal reset
+Hopelijk fixt dit veel andere gekkigheden.
+Ik weet eindelijk waarom de spawnpoint texture niet zichtbaar is bij raytracing.
+Het komt door stochastic dissolve check, waarbij alleen wordt gekeken naar de dissolve van
+het materiaal. Wanneer een materiaal volledig transparent is, maar er een texture op zit,
+wordt deze ge-discard, waarneer dat dus eigenlijk niet hoort. 
+Update: zelfs na dat te hebben veranderd, werkt het niet AAAAH
+Ik ben al 2 uur bezig om een spawnpoint texture zichtbaar te krijgen.
+Eindstand: nog steeds niet gefixt. De reden blijkt NIET de texture te zijn.
+Als ik alle textures uit zet dan zijn de faces in de raytracer alsnog onzichtbaar.
+
+[ 17:13- (duur: ) ]
+Ik heb de rasterizer verbeterd met alpha discarding. Nu werkt map_d goed, nogsteeds
+diezelfde raytracing bug blijft... Ik ga skyboxes toevoegen, werd eens tijd
+Ik voeg een "isSky" boolean toe aan materials die je in Scene.json kan veranderen
+Er gaat nogsteeds iets heftig fout met de material linking. Als ik in mijn scene.json
+file Spawnpoint1 zijn properties aanpas, veranderen die van Part1!
+na een lange lange tijd heb ik eindelijk skyboxes aan de praat, wel laggy!
+
+
 TODO: Verander IndexedFace naar TraversalFace, houd vertices + materialIndex
 als hit: shading array die direct naar UV en Normal indexed, shadingFaces[faceIndex] = vertexIndex
+* Als position verandert van een mesh, moet pivot dan mee?
+* Voeg een isVisible optie toe aan TLASInstance en Mesh 
 
 =============================================================================================================================================
 

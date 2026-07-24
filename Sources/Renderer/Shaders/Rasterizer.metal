@@ -24,6 +24,7 @@ struct Material {
     float roughness;
     float metallic;
     //float refractiveIndex; // IOR, currently unused
+    short isSky; // 1 = true, 0 = false
 };
 
 struct VSOut {
@@ -52,11 +53,23 @@ vertex VSOut vmain(
 fragment float4 fmain(
     VSOut in [[stage_in]],
     texture2d<float> tex [[texture(0)]],
+    texture2d<float> dissolveTex [[texture(1)]],
     sampler samp [[sampler(0)]],
     constant Material& material [[buffer(2)]]
 ) {
-    float4 albedo = material.diffuseTextureIndex == -1 ? float4(material.diffuseColor, 1.0f) : float4(material.diffuseColor, 1.0) * tex.sample(samp, in.uv);
-    float factor = (dot(in.normal, float3(0, 1, 0)) + 1.0) * 0.5f;
-    float3 shaded = albedo.rgb * (factor * 0.5 + 0.5);
-    return float4(shaded, albedo.a * material.dissolve);
+    float4 albedo = float4(material.diffuseColor, 1.0f) * tex.sample(samp, in.uv);
+    float alpha = albedo.a * material.dissolve;
+
+    if (material.dissolveTextureIndex != 1) {
+        alpha *= dissolveTex.sample(samp, in.uv).a;
+    }
+
+    if (alpha < 0.01f) {
+        discard_fragment();
+    }
+
+    //float factor = (dot(in.normal, float3(0, 1, 0)) + 1.0) * 0.5f;
+    //float3 shaded = albedo.rgb * (factor * 0.5 + 0.5);
+    //return float4(shaded, albedo.a * material.dissolve);
+    return float4(albedo.rgb, alpha);
 }

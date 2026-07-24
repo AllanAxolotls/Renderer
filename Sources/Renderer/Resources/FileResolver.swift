@@ -20,6 +20,6 @@ public func resolveFilePath(filePath: String) -> String? {
     if let variant = makeVariant(filePath) {
         if fileManager.fileExists(atPath: variant) { return variant }
     }
-    print("Unsuccessful: \(filePath) nor its variants were found")
+    print("Non-existent path: \(filePath) nor its variants were found")
     return nil
 }

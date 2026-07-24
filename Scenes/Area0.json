@@ -1,0 +1,31 @@
+{
+    "sceneMetaData": {
+        "name": "Scene 1",
+        "version": "1.0",
+        "ambientColor": [1, 1, 1]
+    },
+    "assets": [
+        {
+            "source": "Assets/Pokepark/Area0/FdAr01Zn01Map01/FdAr01Zn01Map01.obj"
+        },
+        {
+            "source": "Assets/Pokepark/Area0/FdAr01Zn01Plants01/FdAr01Zn01Plants01.obj"
+        },
+        {
+            "source": "Assets/Pokepark/Area0/PeFdAr01Zn01Env01/PeFdAr01Zn01Env01.obj",
+            "children": [
+                {
+                    "name": "polygon28",
+                    "material": {
+                        "isSky": true
+                    }
+                }
+            ]
+        }
+    ],
+    "camera": {
+        "position": [0, 0, 0],
+        "rotation": [0, 20, 0],
+        "moveSpeed": 400
+    }
+}

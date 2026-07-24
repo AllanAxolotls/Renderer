@@ -13,8 +13,19 @@ public class Scene: @unchecked Sendable {
     var tlas: TLAS?
     var tlasReformed: Bool = false
 
+    private var hasDefaultTextures: Bool = false
+
     init() {
-        materials.append(Material()) // Default Material
+        var defaultMaterial = Material()
+        defaultMaterial.diffuseTextureIndex = 0
+        defaultMaterial.dissolveTextureIndex = 1
+        materials.append(defaultMaterial) 
+    }
+
+    public func addDefaultTextures(diffuseTexture: MTLTexture, dissolveTexture: MTLTexture) {
+        textures.insert(diffuseTexture, at: 0)
+        textures.insert(dissolveTexture, at: 1)
+        hasDefaultTextures = true
     }
 
     public func buildAccelerationStructures() {
@@ -24,9 +35,8 @@ public class Scene: @unchecked Sendable {
     // TODO: in the future instead of straight up calling reform, queue it so one reform for a bunch of meshes instead
     public func meshModelMatrixChangedBinding(mesh: Mesh) {
         self.tlas?.reform()
-        //self.tlas?.build()
-        tlasReformed = true // To notify the RayTracer
-        
+        //self.tlas?.build() // Instead of reforming, completely rebuilds (costly)
+        tlasReformed = true // To notify the RayTracer and Rasterizer
     }
 
     public func addAsset(_ asset: ObjectAsset) {
@@ -54,7 +64,23 @@ public class Scene: @unchecked Sendable {
             newMeshes[i].vertexOffset += Int32(truncatingIfNeeded: self.vertices.count)
         }
         for i in 0..<newMaterials.count {
-            newMaterials[i].diffuseTextureIndex += Int16(self.textures.count)
+            if (newMaterials[i].diffuseTextureIndex == -1) {
+                if !hasDefaultTextures { 
+                    print("!!! you must do scene.addDefaultTexture(...) before adding assets !!!") 
+                }
+                newMaterials[i].diffuseTextureIndex = 0
+            } else {
+                newMaterials[i].diffuseTextureIndex += Int16(self.textures.count) - 2 // subtract 2 to ignore the default textures
+            }
+
+            if (newMaterials[i].dissolveTextureIndex == -1) {
+                if !hasDefaultTextures { 
+                    print("!!! you must do scene.addDefaultTexture(...) before adding assets !!!") 
+                }
+                newMaterials[i].dissolveTextureIndex = 1
+            } else {
+                newMaterials[i].dissolveTextureIndex += Int16(self.textures.count) - 2 // subtract 2 to ignore the default textures
+            }
         }
 
         self.vertices.append(contentsOf: newVertices)

@@ -39,12 +39,20 @@ class WindowDelegate : NSObject, NSWindowDelegate {
 
         let device = MTLCreateSystemDefaultDevice()!
         objectImporter = ObjectImporter(device: device)
+
+        //scene = createScene(objectImporter: objectImporter)
+
+        //objectImporter.importAtOrigin = true
+        //scene.addAsset(objectImporter.importObject(filePath: "Assets/Spawnlocation/Spawnlocation.obj"))
+        scene = importScene(filePath: "Scenes/Area0.json", objectImporter: objectImporter)
+
+        //scene.addAsset(objectImporter.importObject(filePath: "Assets/FdAr07Zn01/FdAr07Zn01.obj"))
         //scene.addAsset(objectImporter.importObject(filePath: "Assets/RobloxRoom/Room.obj"))
-        //scene = importScene(filePath: "Saves/Typical.json", objectImporter: objectImporter) ?? Scene()
-        //scene = importScene(filePath: "Saves/scene1.json", objectImporter: objectImporter) ?? Scene()
-        scene = importScene(filePath: "Saves/RobloxWorld2.json", objectImporter: objectImporter) ?? Scene()
-        //scene.addAsset(importer.importObject(filePath: "Assets/SkyPavillion/SkyPavMap.obj"))
+        //scene = importScene(filePath: "Scenes/Typical.json", objectImporter: objectImporter)
+        //scene = importScene(filePath: "Scenes/scene1.json", objectImporter: objectImporter)
+        //scene = importScene(filePath: "Scenes/RobloxWorld2.json", objectImporter: objectImporter)
         //scene.addAsset(importer.importObject(filePath: "Assets/RobloxWorld2/RobloxWorld2.obj"))
+
         scene.buildAccelerationStructures() // Mandatory
 
         let view = window.contentView!

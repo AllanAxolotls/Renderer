@@ -12,6 +12,8 @@ class ViewController: NSViewController, MTKViewDelegate {
     public var currentRenderer: Renderer!
     public var rasterRenderer: RasterRenderer!
     public var raytracerRenderer: RayTracerRenderer!
+    public var raytraceScalingFactor: CGFloat = 0.5
+    public var lastUsedRenderer: Renderer? = nil
 
     init(device: MTLDevice, scene: Scene) {
         self.device = device
@@ -31,6 +33,7 @@ class ViewController: NSViewController, MTKViewDelegate {
 
         gameView = GameView(frame: .zero, device: device)
         gameView.clearColor = MTLClearColorMake(0.1, 0.1, 0.1, 1)
+        gameView.scene = scene
         gameView.delegate = self
         gameView.framebufferOnly = true
         gameView.depthStencilPixelFormat = .depth32Float
@@ -40,8 +43,20 @@ class ViewController: NSViewController, MTKViewDelegate {
         DispatchQueue.main.async { self.gameView.window?.makeFirstResponder(self.gameView) }
     }
     func draw(in view: MTKView) {
+        if scene.tlasReformed {
+            scene.tlasReformed = false
+            rasterRenderer.sceneChanged()
+            raytracerRenderer.sceneChanged()
+        }
+
         switch renderMode {
             case .Rasterizer: 
+                if lastUsedRenderer is RayTracerRenderer {
+                    if let window = view.window {
+                        window.title = "[ Rasterizer - Raytracer ]"
+                    }
+                }
+
                 currentRenderer = rasterRenderer
                 raytracerRenderer.invalidateAccumulation()
 
@@ -56,14 +71,15 @@ class ViewController: NSViewController, MTKViewDelegate {
 
                 // To downscale the image size when Raytracing
                 gameView.autoResizeDrawable = false
-                let scaleFactor: CGFloat = 0.25
                 gameView.drawableSize = CGSize(
-                    width: view.bounds.width * (view.window?.screen?.backingScaleFactor ?? 1) * scaleFactor, 
-                    height: view.bounds.height * (view.window?.screen?.backingScaleFactor ?? 1) * scaleFactor
+                    width: view.bounds.width * (view.window?.screen?.backingScaleFactor ?? 1) * self.raytraceScalingFactor, 
+                    height: view.bounds.height * (view.window?.screen?.backingScaleFactor ?? 1) * self.raytraceScalingFactor
                 )
         }
+
         gameView.updateControls(camera: &scene.camera)
         currentRenderer.draw(view: view, commandQueue: commandQueue)
+        lastUsedRenderer = currentRenderer
     }
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         setScreenSize(newWidth: size.width, newHeight: size.height)

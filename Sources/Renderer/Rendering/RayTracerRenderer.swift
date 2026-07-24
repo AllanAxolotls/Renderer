@@ -223,6 +223,11 @@ final class RayTracerRenderer: Renderer {
         }
     }
 
+    public func sceneChanged() {
+        updateGPUBuffers()
+        sampleIndex = 0
+    }
+
     func draw(view: MTKView, commandQueue: MTLCommandQueue) {
         autoreleasepool {
             if raytraceOnCPU {
@@ -245,13 +250,8 @@ final class RayTracerRenderer: Renderer {
                     lastWidth = drawable.texture.width
                     lastHeight = drawable.texture.height
                 }
-                let sceneChanged: Bool = scene.tlasReformed
-                if sceneChanged {
-                    updateGPUBuffers()
-                    scene.tlasReformed = false
-                }
 
-                sampleIndex = (cameraChanged || windowResolutionChanged || sceneChanged) ? 0 : sampleIndex + 1
+                sampleIndex = (cameraChanged || windowResolutionChanged) ? 0 : sampleIndex + 1
                 if sampleIndex == 0 {
                     let accumTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: drawable.texture.width, height: drawable.texture.height, mipmapped: false)
                     accumTextureDesc.usage = [.shaderWrite, .shaderRead]
@@ -264,7 +264,6 @@ final class RayTracerRenderer: Renderer {
                     if let window = view.window {
                         window.title = "Raytracer - Sample \(sampleIndex + 1) / \(maxSamples)"
                     }
-                    //print("Sampling Index: \(sampleIndex)")
                 }
 
                 // The Render Commands

@@ -40,14 +40,14 @@ private let benchmarkGPUTime: Bool = false
         opaqueDepthDesc.isDepthWriteEnabled = true
         opaqueDepthDesc.depthCompareFunction = .less
         opaqueDepthState = device.makeDepthStencilState(descriptor: opaqueDepthDesc)!
-        opaqueSubMeshes = scene.subMeshes.filter({ scene.materials[Int($0.materialIndex)].dissolve >= 1.0 })
+        opaqueSubMeshes = scene.subMeshes.filter({ scene.materials[Int($0.materialIndex)].dissolve >= 1.0 && scene.materials[Int($0.materialIndex)].diffuseTextureIndex != 1 })
 
         // Depth state for transparent objects
         let transparentDepthDesc = MTLDepthStencilDescriptor()
         transparentDepthDesc.isDepthWriteEnabled = false
         transparentDepthDesc.depthCompareFunction = .less
         transparentDepthState = device.makeDepthStencilState(descriptor: transparentDepthDesc)!
-        transparentSubMeshes = scene.subMeshes.filter({ scene.materials[Int($0.materialIndex)].dissolve < 1.0 })
+        transparentSubMeshes = scene.subMeshes.filter({ scene.materials[Int($0.materialIndex)].dissolve < 1.0 || scene.materials[Int($0.materialIndex)].dissolveTextureIndex != 1 })
 
         updateProjectionMatrix()
     }
@@ -64,6 +64,11 @@ private let benchmarkGPUTime: Bool = false
             simd_float4(0, 0, zFar / (zFar - zNear), 1),
             simd_float4(0, 0, -zNear * zFar / (zFar - zNear), 0)
         ))
+    }
+
+    public func sceneChanged() {
+        opaqueSubMeshes = scene.subMeshes.filter({ scene.materials[Int($0.materialIndex)].dissolve >= 1.0 && scene.materials[Int($0.materialIndex)].diffuseTextureIndex != 1 })
+        transparentSubMeshes = scene.subMeshes.filter({ scene.materials[Int($0.materialIndex)].dissolve < 1.0 || scene.materials[Int($0.materialIndex)].dissolveTextureIndex != 1 })
     }
 
     func draw(view: MTKView, commandQueue: MTLCommandQueue) {
@@ -99,7 +104,8 @@ private let benchmarkGPUTime: Bool = false
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<RasterizerUniforms>.stride, index: 1)
 
             var indexedMaterial = scene.materials[Int(subMesh.materialIndex)]
-            encoder.setFragmentTexture(scene.textures[indexedMaterial.diffuseTextureIndex == -1 ? 0 : Int(indexedMaterial.diffuseTextureIndex)], index: 0)
+            encoder.setFragmentTexture(scene.textures[Int(indexedMaterial.diffuseTextureIndex)], index: 0)
+            encoder.setFragmentTexture(scene.textures[Int(indexedMaterial.dissolveTextureIndex)], index: 1)
             encoder.setFragmentBytes(&indexedMaterial, length: MemoryLayout<Material>.stride, index: 2)
             let indexCount = 3 * Int(subMesh.faceCount)
             let indexBufferOffset = 3 * Int(subMesh.faceOffset) * MemoryLayout<UInt32>.stride

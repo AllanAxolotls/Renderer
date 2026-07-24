@@ -10,15 +10,10 @@
             "children": [
                 {
                     "name": "Spawnlocation1",
-                    "position": [0, 4, 0],
-                    "rotation": [0, 0, 0],
-                    "size": [1, 1, 1]
-                },
-                {
-                    "name": "Spawnlocation2",
-                    "position": [0, 4, 0],
-                    "rotation": [0, 0, 0],
-                    "size": [1, 1, 1]
+                    "material": {
+                        "dissolve": 0,
+                        "isSky": true
+                    }
                 }
             ]
         }

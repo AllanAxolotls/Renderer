@@ -6,6 +6,7 @@ class GameView: MTKView {
     private var lastUpdate = CACurrentMediaTime()
     public var rightJoystick = simd_float2(0, 0)
     private var ignoreNextMouseDelta = false
+    public var scene: Scene? = nil
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -18,6 +19,40 @@ class GameView: MTKView {
 
     override func keyUp(with event: NSEvent) {
         keysDown.remove(event.keyCode)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if let scene = scene {
+            let mouseLocation = event.locationInWindow
+            let viewSize = self.bounds.size
+            let ndcX = (Float(mouseLocation.x) / Float(viewSize.width)) * 2 - 1
+            let ndcY = 1 - (Float(mouseLocation.y) / Float(viewSize.height)) * 2
+            let aspectRatio = Float(viewSize.width / viewSize.height)
+            let projectedX = ndcX * aspectRatio * tan(FOVRad * 0.5)
+            let projectedY = ndcY * tan(FOVRad * 0.5)
+
+            let rayOrigin = scene.camera.position
+            let rayDirection = simd_normalize(scene.camera.forward + projectedX * scene.camera.right + projectedY * scene.camera.up)
+
+            let result = scene.tlas?.raycast(origin: rayOrigin, direction: rayDirection)
+            if let hit = result {
+                print("Hit Mesh Index: \(hit.instanceIndex), Face Index: \(hit.faceIndex), Position: \(hit.hit)")
+
+                // Mesh toevoegen na scene al gebouwd is werkt nog niet omdat
+                // de rasterizer van tevoren opaque en transparent sorteert,
+                // daarnaast moet de TLAS gerformed worden
+                /*
+                let importer = ObjectImporter(device: nil)
+                let asset = importer.importObject(filePath: "Assets/FriedChicken/FriedChicken.obj")
+                for mesh in asset.meshes {
+                    //mesh.position = hit.hit
+                }
+                scene.addAsset(asset)
+                */
+            } else {
+                print("No hit")
+            }
+        }
     }
 
     override func rightMouseDown(with event: NSEvent) {

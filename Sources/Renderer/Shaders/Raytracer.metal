@@ -5,11 +5,11 @@ constant float epsilon = 1e-6;
 constant float3 horizonColor = float3(207.0/255.0, 219.0/255.0, 230.0/255.0);
 constant float3 zenithColor = float3(60.0/255.0, 138.0/255.0, 201.0/255.0);
 constant float skyIntensity = 4.0;
-constant float3 sunDirection = float3(1.0, 0, 0.0); // Note: the direction is inverted, technically it should be: -sunDirection
+constant float3 sunDirection = float3(0, 1.0, 0.0); // Note: the direction is inverted, technically it should be: -sunDirection
 constant float3 invSunDirection = 1.0 / sunDirection;
 constant float3 sunColor = float3(10.0, 9.5, 8.5) * 0.5;
 constant float sunIntensity = 256.0;
-constant int maxLightBounces = 10;
+constant int maxLightBounces = 2;
 
 struct Uniforms {
     int sampleIndex;
@@ -40,7 +40,7 @@ struct Material {
     //float3 specularColor; // currently unused
     float3 emissionColor;
     //short ambientTextureIndex; // currently unused
-    short diffuseTextureIndex; // -1 = no texture
+    short diffuseTextureIndex;
     //short specularTextureIndex; // currently unused
     short dissolveTextureIndex;
     //short bumpTextureIndex; // currently unused
@@ -51,6 +51,7 @@ struct Material {
     float roughness;
     float metallic;
     //float refractiveIndex; // IOR, currently unused
+    short isSky; // 1 = true, 0 = false
 };
 
 struct TextureCollection {
@@ -218,7 +219,7 @@ inline float intersectsFaceDistance(float3 origin, float3 direction, device cons
     if (v < -epsilon || u + v - 1 > epsilon) { return INFINITY; }
 
     float t = invDet * dot(edge2, sCrossEdge1);
-    if (t > epsilon) { // && t <= 1) { // if t > 1 then ray is longer than segment length
+    if (t > epsilon) {
         return t;
     }
 
@@ -257,6 +258,7 @@ RaycastResult traverseBLAS(
         );
         bool4 validHit = hits < float4(closest.distance);
 
+        // Swap Method, (doesn't really increase performance)
         /*
         int child0 = node.childIndices[0]; float dist0 = hits[0];
         int child1 = node.childIndices[1]; float dist1 = hits[1];
@@ -385,9 +387,16 @@ RaycastResult traverseTLAS(
     return closest;
 }
 
-bool shadowTraverseBLAS(
+enum ShadowTraverseReturnType : short {
+    ShadowTraverseNone = 0,
+    ShadowTraverseSky = 1,
+    ShadowTraverseSome = 2
+};
+
+enum ShadowTraverseReturnType shadowTraverseBLAS(
     float3 origin, float3 direction, float3 invDirection,
-    device const BLASNode* blasNodes, int blasStartIndex, device const Face* faces
+    device const BLASNode* blasNodes, int blasStartIndex, device const Face* faces,
+    device const Material* materials
 ) {
     int nodeIndex = blasStartIndex;
     uint stackPtr = 0;
@@ -410,7 +419,7 @@ bool shadowTraverseBLAS(
                 int stop = node.faceCounts[i] + node.faceOffsets[i];
                 for (int j = node.faceOffsets[i]; j < stop; ++j) {
                     if (intersectsFaceDistance(origin, direction, faces[j]) != INFINITY) {
-                        return true;
+                        return (enum ShadowTraverseReturnType)(2 - materials[faces[j].materialIndex].isSky);
                     }
                 }
             } else {
@@ -420,13 +429,13 @@ bool shadowTraverseBLAS(
         nodeIndex = (stackPtr != 0) ? stack[--stackPtr] : -1;
     }
 
-    return false;
+    return ShadowTraverseNone;
 }
 
 bool shadowTraverseTLAS(
     float3 origin, float3 direction, float3 invDirection, 
     device const TLASNode* tlasNodes, device const TLASInstance* tlasInstances, 
-    device const BLASNode* blasNodes, device const Face* faces
+    device const BLASNode* blasNodes, device const Face* faces, device const Material* materials
 ) {
     int nodeIndex = 0;
     uint stackPtr = 0;
@@ -454,9 +463,13 @@ bool shadowTraverseTLAS(
                     float3 localOrigin = (tlasInstance.invModelMatrix * origin4).xyz;
                     float3 localDirection = normalize((tlasInstance.invModelMatrix * direction4).xyz);
                     float3 localInvDirection = 1.0 / localDirection;
-                    if (shadowTraverseBLAS(localOrigin, localDirection, localInvDirection, blasNodes, tlasInstance.blasStartIndex, faces)) {
+
+                    /*
+                    if (shadowTraverseBLAS(localOrigin, localDirection, localInvDirection, blasNodes, tlasInstance.blasStartIndex, faces, materials) == ShadowTraverseSome) {
                         return true;
-                    }
+                    }*/
+                    enum ShadowTraverseReturnType trav_return = shadowTraverseBLAS(localOrigin, localDirection, localInvDirection, blasNodes, tlasInstance.blasStartIndex, faces, materials);
+                    if (trav_return > ShadowTraverseNone) return (bool)(trav_return - 1); // Converts into: if sky then false, if Some then true
                 } 
             } else { // Branch Node
                 stack[stackPtr++] = node.childIndices[i];
@@ -589,8 +602,21 @@ kernel void raytrace(
             break;
         }
 
+        float2 uv = result.barycentric.x * hitFace.vertex0.uv + result.barycentric.y * hitFace.vertex1.uv + result.barycentric.z * hitFace.vertex2.uv;
+
+        if (material.isSky) {
+            float4 texColor = collection.textures[material.diffuseTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0));
+            float3 skyEmissive = material.diffuseColor.rgb * texColor.rgb;
+            radiance += throughput * skyEmissive * skyIntensity;
+            break;
+        }
+
         // Stochastic Dissolve Check
-        if (random(rngState) > material.dissolve) {
+        float stochastic_dissolve = random(rngState);
+        // For materials that have no dissolve map, alpha will default to 0.0f
+        float dissolve = material.dissolveTextureIndex == 1 ? material.dissolve : collection.textures[material.dissolveTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0)).a;
+
+        if (stochastic_dissolve > dissolve) {
             // To avoid intersecting the same triangle, nudge the ray a bit
             bounce--;
             rayOrigin = result.hit + rayDirection * 1e-3; // Too small numbers like 1e-6 don't work
@@ -601,20 +627,11 @@ kernel void raytrace(
         float3 albedo;
         float3 normal;
         {
-            float2 uv = result.barycentric.x * hitFace.vertex0.uv + result.barycentric.y * hitFace.vertex1.uv + result.barycentric.z * hitFace.vertex2.uv;
-            if (material.dissolveTextureIndex != -1 && collection.textures[material.dissolveTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0)).a < 0.01f) {
-                bounce--;
-                rayOrigin = result.hit + rayDirection * 0.01f;
-                continue; // Should not be consired a hit as there is no visible pixel, continue where left off
-            }
-
             float4 texColor = float4(material.diffuseColor.rgb, 1.0f);
-            if (material.diffuseTextureIndex != -1) {
-                texColor *= collection.textures[material.diffuseTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0));
-            }
+            texColor *= collection.textures[material.diffuseTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0));
 
             albedo = mix(material.diffuseColor.rgb, texColor.rgb, texColor.a);
-            // In future, if not smooth shading, use result.normal, but don't forget that result.normal is not normalized
+            // TODO: In future, if not smooth shading, use result.normal, but don't forget that result.normal is not normalized
             normal = normalize(result.barycentric.x * hitFace.vertex0.normal + result.barycentric.y * hitFace.vertex1.normal + result.barycentric.z * hitFace.vertex2.normal);
             if (dot(normal, rayDirection) > 0.0) normal = -normal;
         }
@@ -640,7 +657,7 @@ kernel void raytrace(
         // Next Event Estimation
         float normalDotLight = max(dot(normal, sunDirection), 0.0);
         if (normalDotLight > 0.0) {
-            bool inShadow = shadowTraverseTLAS(result.hit + normal * epsilon, sunDirection, invSunDirection, tlasNodes, tlasInstances, blasNodes, faces);
+            bool inShadow = shadowTraverseTLAS(result.hit + normal * epsilon, sunDirection, invSunDirection, tlasNodes, tlasInstances, blasNodes, faces, materials);
             if (!inShadow) {
                 // Compute the Fresnel response relative to the incoming light vector
                 float cosThetaLight = clamp(dot(sunDirection, normal), 0.0, 1.0);
