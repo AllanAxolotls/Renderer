@@ -652,7 +652,7 @@ Ik ben al 2 uur bezig om een spawnpoint texture zichtbaar te krijgen.
 Eindstand: nog steeds niet gefixt. De reden blijkt NIET de texture te zijn.
 Als ik alle textures uit zet dan zijn de faces in de raytracer alsnog onzichtbaar.
 
-[ 17:13- (duur: ) ]
+[ 17:13-22:30 (duur: 5 uur, 17 min. ) ]
 Ik heb de rasterizer verbeterd met alpha discarding. Nu werkt map_d goed, nogsteeds
 diezelfde raytracing bug blijft... Ik ga skyboxes toevoegen, werd eens tijd
 Ik voeg een "isSky" boolean toe aan materials die je in Scene.json kan veranderen
