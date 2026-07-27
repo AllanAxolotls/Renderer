@@ -8,7 +8,7 @@ public enum RenderMode {
 }
 
 @MainActor protocol Renderer {
-    var scene: Scene { get set }
+    var scene: Scene? { get set }
 
     func draw(
         view: MTKView,
@@ -23,7 +23,6 @@ public struct RasterizerUniforms {
 
 public struct RayTracerUniforms {
     let sampleIndex: Int32
-    let sphereLightCount: Int32
     let fovScale: Float
     let cameraPosition: simd_float3
     let cameraForward: simd_float3
@@ -32,8 +31,16 @@ public struct RayTracerUniforms {
 }
 
 public struct RayTraceTriangleGPU {
-    public var vertex0: Vertex
-    public var vertex1: Vertex
-    public var vertex2: Vertex
+    public var position0: simd_float3
+    public var position1: simd_float3
+    public var position2: simd_float3
+    public var vertexIndex0: UInt32
+    public var vertexIndex1: UInt32
+    public var vertexIndex2: UInt32
     public var materialIndex: Int32
+}
+
+public struct RayTraceVertexAttributes {
+    public var normal: simd_float3
+    public var uv: simd_float2
 }

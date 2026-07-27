@@ -2,15 +2,17 @@ import simd
 
 public struct Vertex {
     public var position: simd_float3
-    public var uv: simd_float2
     public var normal: simd_float3
+    public var uv: simd_float2
 }
 
 public struct Face {
-    public var vertexIndices: simd_uint3
+    public var vertexIndex0: UInt32
+    public var vertexIndex1: UInt32
+    public var vertexIndex2: UInt32
     public var subMeshIndex: Int32
 }
-
+ 
 public struct Material {
     //public var ambientColor: simd_float3 = simd_float3(1, 1, 1)
     public var diffuseColor: simd_float3 = simd_float3(1, 1, 1)

@@ -7,13 +7,12 @@ constant float3 zenithColor = float3(60.0/255.0, 138.0/255.0, 201.0/255.0);
 constant float skyIntensity = 4.0;
 constant float3 sunDirection = float3(0, 1.0, 0.0); // Note: the direction is inverted, technically it should be: -sunDirection
 constant float3 invSunDirection = 1.0 / sunDirection;
-constant float3 sunColor = float3(10.0, 9.5, 8.5) * 0.5;
-constant float sunIntensity = 256.0;
+constant float3 sunColor = float3(10.0, 9.5, 8.5) * 0.2; // Adjust the factor to adjust the sun brightness
+constant float sunIntensity = 128.0;
 constant int maxLightBounces = 2;
 
 struct Uniforms {
     int sampleIndex;
-    int sphereLightCount;
     float fovScale;
     float3 cameraPosition;
     float3 cameraForward;
@@ -21,16 +20,25 @@ struct Uniforms {
     float3 cameraRight;
 };
 
+/*
 struct Vertex {
     float3 position;
-    float2 uv;
     float3 normal;
+    float2 uv;
+};*/
+
+struct VertexAttributes {
+    float3 normal;
+    float2 uv;
 };
 
 struct Face {
-    Vertex vertex0;
-    Vertex vertex1;
-    Vertex vertex2;
+    float3 position0;
+    float3 position1;
+    float3 position2;
+    uint vertexIndex0;
+    uint vertexIndex1;
+    uint vertexIndex2;
     int materialIndex;
 };
 
@@ -42,7 +50,7 @@ struct Material {
     //short ambientTextureIndex; // currently unused
     short diffuseTextureIndex;
     //short specularTextureIndex; // currently unused
-    short dissolveTextureIndex;
+    short dissolveTextureIndex; // -1 = no texture
     //short bumpTextureIndex; // currently unused
     // need to add a normalTexture too
     //short illuminationModel; // currently unused
@@ -69,7 +77,7 @@ struct BLASNode { // For empty leafs, use min: +INFINITY and max: -INFINITY
 };
 
 struct TLASInstance {
-    int blasStartIndex;
+    int blasStartIndex; // TODO: fix padding on this, move blasStartIndex to tail
     float4x4 modelMatrix;
     float4x4 invModelMatrix;
     float3x3 invNormalMatrix;
@@ -164,9 +172,9 @@ inline float4 intersects4AABBsAndCloserThanRayHit(
 }
 
 inline RaycastResult intersectsFace(float3 origin, float3 direction, device const Face& face) {
-    float3 vertex0 = face.vertex0.position;
-    float3 edge1 = face.vertex1.position - vertex0;
-    float3 edge2 = face.vertex2.position - vertex0;
+    float3 position0 = face.position0;
+    float3 edge1 = face.position1 - position0;
+    float3 edge2 = face.position2 - position0;
      // Backface Culling, keeps CCW-wound triangles
     float3 normal = cross(edge1, edge2);
     if (dot(normal, direction) > 0) { return RaycastResult{ .distance = INFINITY, }; }
@@ -176,7 +184,7 @@ inline RaycastResult intersectsFace(float3 origin, float3 direction, device cons
     if (abs(det) < epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
     float invDet = 1.0 / det;
-    float3 s = origin - vertex0;
+    float3 s = origin - position0;
     float u = invDet * dot(s, directionCrossEdge2);
     if (u < -epsilon || u - 1 > epsilon) { return RaycastResult{ .distance = INFINITY, }; }
 
@@ -198,9 +206,9 @@ inline RaycastResult intersectsFace(float3 origin, float3 direction, device cons
 }
 
 inline float intersectsFaceDistance(float3 origin, float3 direction, device const Face& face) {
-    float3 vertex0 = face.vertex0.position;
-    float3 edge1 = face.vertex1.position - vertex0;
-    float3 edge2 = face.vertex2.position - vertex0;
+    float3 position0 = face.position0;
+    float3 edge1 = face.position1 - position0;
+    float3 edge2 = face.position2 - position0;
      // Backface Culling, keeps CCW-wound triangles
     float3 normal = cross(edge1, edge2);
     if (dot(normal, direction) > 0) { return INFINITY; }
@@ -210,7 +218,7 @@ inline float intersectsFaceDistance(float3 origin, float3 direction, device cons
     if (abs(det) < epsilon) { return INFINITY; }
 
     float invDet = 1.0 / det;
-    float3 s = origin - vertex0;
+    float3 s = origin - position0;
     float u = invDet * dot(s, directionCrossEdge2);
     if (u < -epsilon || u - 1 > epsilon) { return INFINITY; }
 
@@ -550,6 +558,7 @@ kernel void raytrace(
     device const BLASNode* blasNodes [[buffer(4)]],
     //device const Face* faces [[buffer(5)]],
     device const Face* faces [[buffer(5)]],
+    device const VertexAttributes* vertexAttributes [[buffer(7)]],
     device const TextureCollection& collection [[buffer(6)]],
     
     uint2 gid [[thread_position_in_grid]]
@@ -582,7 +591,7 @@ kernel void raytrace(
 
     for (uint bounce = 0; bounce < maxLightBounces; bounce++) {
         // Raycast
-        RaycastResult result = traverseTLAS(rayOrigin, rayDirection, invRayDirection, tlasNodes, tlasInstances, blasNodes, faces);
+        const RaycastResult result = traverseTLAS(rayOrigin, rayDirection, invRayDirection, tlasNodes, tlasInstances, blasNodes, faces);
         
         // Sky
         if (result.distance == INFINITY) {
@@ -602,19 +611,33 @@ kernel void raytrace(
             break;
         }
 
-        float2 uv = result.barycentric.x * hitFace.vertex0.uv + result.barycentric.y * hitFace.vertex1.uv + result.barycentric.z * hitFace.vertex2.uv;
+        device const VertexAttributes& vertexAttributes0 = vertexAttributes[hitFace.vertexIndex0];
+        device const VertexAttributes& vertexAttributes1 = vertexAttributes[hitFace.vertexIndex1];
+        device const VertexAttributes& vertexAttributes2 = vertexAttributes[hitFace.vertexIndex2];
 
+        float2 uv = result.barycentric.x * vertexAttributes0.uv + result.barycentric.y * vertexAttributes1.uv + result.barycentric.z * vertexAttributes2.uv;
+
+        // Skyboxes
         if (material.isSky) {
+            /*
             float4 texColor = collection.textures[material.diffuseTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0));
             float3 skyEmissive = material.diffuseColor.rgb * texColor.rgb;
+            float sunAmount = pow(max(dot(rayDirection, sunDirection), 0.0), sunIntensity);
             radiance += throughput * skyEmissive * skyIntensity;
+            break;
+            */
+            float4 texColor = collection.textures[material.diffuseTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0));
+            float3 skyEmissive = material.diffuseColor.rgb * texColor.rgb;
+            float t = 0.5 * (rayDirection.y + 1.0);
+            float3 skyColor = mix(horizonColor, zenithColor, t);
+            radiance += throughput * mix(skyColor * skyIntensity, skyEmissive, 0.5);
             break;
         }
 
         // Stochastic Dissolve Check
         float stochastic_dissolve = random(rngState);
         // For materials that have no dissolve map, alpha will default to 0.0f
-        float dissolve = material.dissolveTextureIndex == 1 ? material.dissolve : collection.textures[material.dissolveTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0)).a;
+        float dissolve = material.dissolveTextureIndex == -1 ? material.dissolve : collection.textures[material.dissolveTextureIndex].sample(collection.samp, uv, gradient2d(0.0, 0.0)).a;
 
         if (stochastic_dissolve > dissolve) {
             // To avoid intersecting the same triangle, nudge the ray a bit
@@ -632,7 +655,7 @@ kernel void raytrace(
 
             albedo = mix(material.diffuseColor.rgb, texColor.rgb, texColor.a);
             // TODO: In future, if not smooth shading, use result.normal, but don't forget that result.normal is not normalized
-            normal = normalize(result.barycentric.x * hitFace.vertex0.normal + result.barycentric.y * hitFace.vertex1.normal + result.barycentric.z * hitFace.vertex2.normal);
+            normal = normalize(result.barycentric.x * vertexAttributes0.normal + result.barycentric.y * vertexAttributes1.normal + result.barycentric.z * vertexAttributes2.normal);
             if (dot(normal, rayDirection) > 0.0) normal = -normal;
         }
 
@@ -681,7 +704,7 @@ kernel void raytrace(
             throughput /= p;
         }
 
-        // --- INDIRECT SURFACE SCATTERING & PATH SELECTION ---
+        // INDIRECT SURFACE SCATTERING & PATH SELECTION 
         rayOrigin = result.hit + normal * epsilon; 
         float2 bounceRand = random2(rngState);
 
@@ -713,6 +736,7 @@ kernel void raytrace(
         invRayDirection = 1.0 / rayDirection;
     }
 
+    // To avoid black pixels
     if (any(isnan(radiance)) || any(isinf(radiance))) {
         radiance = float3(0.0, 0.0, 0.0);
     }
@@ -726,6 +750,34 @@ kernel void raytrace(
 
     accumTexture.write(accumColor, gid);
     float3 averageColor = accumColor.rgb / float(sampleIndex + 1); // sampleIndex + 1 = sampleCount
-    float3 toneMappedColor = 1.0 - exp(-averageColor);
-    output.write(half4(half3(toneMappedColor.rgb), 1.0), gid);
+    output.write(half4(half3(averageColor.rgb), 1.0), gid);
+}
+
+
+
+
+struct FullscreenOut {
+    float4 position [[position]];
+    float2 uv;
+};
+
+vertex FullscreenOut fullscreenVertex(uint id [[vertex_id]]) {
+    float2 positions[3] = {float2(-1,-1), float2(3,-1), float2(-1,3)};
+    float2 uvs[3] = {float2(0,1), float2(2,1), float2(0,-1)};
+
+    FullscreenOut out;
+    out.position = float4(positions[id],0,1);
+    out.uv = uvs[id];
+    return out;
+}
+
+
+fragment float4 upscaleFragment(
+    FullscreenOut in [[stage_in]],
+    texture2d<float> image [[texture(0)]],
+    sampler samp [[sampler(0)]]
+) {
+    float4 color = image.sample(samp, in.uv);
+    float4 toneMappedColor = 1.0 - exp(-color);
+    return float4(toneMappedColor.rgb, 1.0);
 }

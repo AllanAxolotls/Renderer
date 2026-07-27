@@ -1,12 +1,12 @@
 import MetalKit
 import QuartzCore
+import Combine
 
 class GameView: MTKView {
     private var keysDown: Set<UInt16> = []
     private var lastUpdate = CACurrentMediaTime()
     public var rightJoystick = simd_float2(0, 0)
     private var ignoreNextMouseDelta = false
-    public var scene: Scene? = nil
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -15,44 +15,18 @@ class GameView: MTKView {
         if event.keyCode == 15 { // R
             renderMode = renderMode == .Raytracer ? .Rasterizer : .Raytracer
         }
+        if event.keyCode == 49 && renderMode == .Raytracer { // Space
+            raytracingPaused = !raytracingPaused
+        }
     }
 
     override func keyUp(with event: NSEvent) {
         keysDown.remove(event.keyCode)
     }
 
+    public let mouseDownBinding = PassthroughSubject<NSEvent, Never>()
     override func mouseDown(with event: NSEvent) {
-        if let scene = scene {
-            let mouseLocation = event.locationInWindow
-            let viewSize = self.bounds.size
-            let ndcX = (Float(mouseLocation.x) / Float(viewSize.width)) * 2 - 1
-            let ndcY = 1 - (Float(mouseLocation.y) / Float(viewSize.height)) * 2
-            let aspectRatio = Float(viewSize.width / viewSize.height)
-            let projectedX = ndcX * aspectRatio * tan(FOVRad * 0.5)
-            let projectedY = ndcY * tan(FOVRad * 0.5)
-
-            let rayOrigin = scene.camera.position
-            let rayDirection = simd_normalize(scene.camera.forward + projectedX * scene.camera.right + projectedY * scene.camera.up)
-
-            let result = scene.tlas?.raycast(origin: rayOrigin, direction: rayDirection)
-            if let hit = result {
-                print("Hit Mesh Index: \(hit.instanceIndex), Face Index: \(hit.faceIndex), Position: \(hit.hit)")
-
-                // Mesh toevoegen na scene al gebouwd is werkt nog niet omdat
-                // de rasterizer van tevoren opaque en transparent sorteert,
-                // daarnaast moet de TLAS gerformed worden
-                /*
-                let importer = ObjectImporter(device: nil)
-                let asset = importer.importObject(filePath: "Assets/FriedChicken/FriedChicken.obj")
-                for mesh in asset.meshes {
-                    //mesh.position = hit.hit
-                }
-                scene.addAsset(asset)
-                */
-            } else {
-                print("No hit")
-            }
-        }
+        mouseDownBinding.send(event)
     }
 
     override func rightMouseDown(with event: NSEvent) {

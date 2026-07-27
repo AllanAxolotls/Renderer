@@ -28,22 +28,29 @@ final class PipelineBuilder {
         return try! device.makeRenderPipelineState(descriptor: desc)
     }
 
-    func makeRayTracePipeline(textures: [MTLTexture]) -> (MTLComputePipelineState, MTLBuffer) {
+    func makeRayTracePipeline(textures: [MTLTexture]) -> (MTLComputePipelineState, MTLRenderPipelineState, MTLArgumentEncoder, MTLBuffer) {
         let url = URL(fileURLWithPath: "Resources/Raytracer.metallib")
         let lib = try! device.makeLibrary(URL: url)
         let function = lib.makeFunction(name: "raytrace")!
         let argumentEncoder = function.makeArgumentEncoder(bufferIndex: 6)
 
-        let textureCount = textures.count
         // TODO: make this variable, instead of stuck
-        print("Texture Count: \(textureCount)")
-        let bufferLength = argumentEncoder.encodedLength + (textureCount * MemoryLayout<UInt64>.size)
+        let maxTextureCount: Int = 128 // Same as in TextureCollection in Raytracer.metal
+        let bufferLength = argumentEncoder.encodedLength + (maxTextureCount * MemoryLayout<UInt64>.size)
         let argumentBuffer = device.makeBuffer(length: bufferLength, options: [])!
         argumentEncoder.setArgumentBuffer(argumentBuffer, offset: 0)
         argumentEncoder.setSamplerState(sampler, index: 0)
-        argumentEncoder.setTextures(textures, range: 1 ..< textureCount + 1)
+        argumentEncoder.setTextures(textures, range: 1 ..< textures.count + 1)
+
+        let desc = MTLRenderPipelineDescriptor()
+        desc.vertexFunction = lib.makeFunction(name: "fullscreenVertex")
+        desc.fragmentFunction = lib.makeFunction(name: "upscaleFragment")
+        desc.colorAttachments[0].pixelFormat = .bgra8Unorm_srgb
+
         return (
             try! device.makeComputePipelineState(function: function), 
+            try! device.makeRenderPipelineState(descriptor: desc),
+            argumentEncoder,
             argumentBuffer
         )
     }

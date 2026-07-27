@@ -1,13 +1,14 @@
 import MetalKit
 import ImageIO
 import UniformTypeIdentifiers
+import Combine
 
+// TODO: move these to a config file
 private let outputImageName = "output.png"
 private let raytraceOnCPU: Bool = false // If true, the CPU does the raytracing of one frame and saves it as outputImageName, then exits the program immediately
 private let saveAndExitOnGPU: Bool = false // If true, one frame gets saved of the raytracer as the outputImageName and then the program immediately exits
 private let maxSamples: Int32 = 1000
 private let printCPUProgressEveryRow: Bool = true
-private let benchmarkGPUTime: Bool = false
 
 /*
 private func toByte(_ x: Float) -> UInt8 {
@@ -145,18 +146,24 @@ private func raycastPixel(
 final class RayTracerRenderer: Renderer {
     // Image Creation here
     var device: MTLDevice!
-    var scene: Scene
+    var scene: Scene?
     var pipelineBuilder: PipelineBuilder!
     var raytraceState: MTLComputePipelineState!
+    var upscalePipeline: MTLRenderPipelineState!
+    var fullscreenSampler: MTLSamplerState!
 
     let uniformsBuffer: MTLBuffer!
-    var materialBuffer: MTLBuffer!
-    var tlasNodeBuffer: MTLBuffer!
-    var tlasInstanceBuffer: MTLBuffer!
-    var blasNodeBuffer: MTLBuffer!
-    var faceBuffer: MTLBuffer!
+    var materialBuffer: MTLBuffer? = nil
+    var tlasNodeBuffer: MTLBuffer? = nil
+    var tlasInstanceBuffer: MTLBuffer? = nil
+    var blasNodeBuffer: MTLBuffer? = nil
+    var faceBuffer: MTLBuffer? = nil
+    var vertexAttributesBuffer: MTLBuffer? = nil
+
+    var argumentEncoder: MTLArgumentEncoder!
     var argumentBuffer: MTLBuffer!
 
+    var rayOutputTexture: MTLTexture? = nil
     var accumTexture: MTLTexture? = nil
 
     var lastCameraPosition: simd_float3 = simd_float3(.infinity, .infinity, .infinity)
@@ -165,124 +172,242 @@ final class RayTracerRenderer: Renderer {
     var lastWidth: Int = -1 // drawable.texture.width
     var lastHeight: Int = -1 // drawable.texture.height
     var sampleIndex: Int32 = 0
+    private(set) var lastFrameDuration: Double = 0
+    private var lastTitleUpdateTimestamp: CFAbsoluteTime = 0.0
+    private let titleUpdateInterval: CFAbsoluteTime = 0.25 // Update max 4 times/sec
 
-    init (device: MTLDevice, scene: Scene) {
+    var outputWidthDivisor: Int = 1
+    var outputHeightDivisor: Int = 1
+
+    // Connections
+    var sceneTexturesAddedConnection: AnyCancellable? = nil
+    var sceneTLASReformedConnection: AnyCancellable? = nil
+    var sceneTLASRebuiltConnection: AnyCancellable? = nil
+
+    init (device: MTLDevice, scene: Scene?) {
         self.device = device
-        self.scene = scene
         self.pipelineBuilder = PipelineBuilder(device: device)
-        (self.raytraceState, argumentBuffer) = self.pipelineBuilder.makeRayTracePipeline(textures: scene.textures)
+        (self.raytraceState, self.upscalePipeline, argumentEncoder, argumentBuffer) = self.pipelineBuilder.makeRayTracePipeline(textures: scene?.textures ?? [])
+
+        let sampDesc = MTLSamplerDescriptor()
+        sampDesc.minFilter = .linear
+        sampDesc.magFilter = .linear
+        sampDesc.sAddressMode = .clampToEdge
+        sampDesc.tAddressMode = .clampToEdge
+        fullscreenSampler = device.makeSamplerState(descriptor: sampDesc)
 
         var uniforms = RayTracerUniforms(
             sampleIndex: sampleIndex,
-            sphereLightCount: Int32(scene.sphereLights.count),
             fovScale: tan(FOVRad * 0.5), 
-            cameraPosition: scene.camera.position,
-            cameraForward: scene.camera.forward, 
-            cameraUp: scene.camera.up,
-            cameraRight: scene.camera.right
+            cameraPosition: scene?.camera.position ?? simd_float3(0, 0, 0),
+            cameraForward: scene?.camera.forward ?? simd_float3(0, 0, 1), 
+            cameraUp: scene?.camera.up ?? simd_float3(0, 1, 0),
+            cameraRight: scene?.camera.right ?? simd_float3(1, 0, 0)
         )
 
         uniformsBuffer = device.makeBuffer(bytes: &uniforms, length: MemoryLayout<RayTracerUniforms>.stride)
 
-        scene.materials.withUnsafeBufferPointer { ptr in 
-            self.materialBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<Material>.stride * scene.materials.count)
-        }
-        scene.tlas!.tlasNodes.withUnsafeBufferPointer { ptr in
-            self.tlasNodeBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<TLASNode>.stride * scene.tlas!.tlasNodes.count)
-        }
-        scene.tlas!.tlasInstances.withUnsafeBufferPointer { ptr in
-            self.tlasInstanceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<TLASInstance>.stride * scene.tlas!.tlasInstances.count)
-        }
-        scene.tlas!.blasNodes.withUnsafeBufferPointer { ptr in
-            self.blasNodeBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<BLASNode>.stride * scene.tlas!.blasNodes.count)
-        }
-        scene.tlas!.faces.withUnsafeBufferPointer { ptr in
-            self.faceBuffer = device.makeBuffer(bytes: ptr.baseAddress!, length: MemoryLayout<RayTraceTriangleGPU>.stride * scene.tlas!.faces.count)
-        }
+        setScene(scene)
+    }
+
+    func createRayTexture(width: Int, height: Int) {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba16Float,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+
+        desc.usage = [.shaderWrite, .shaderRead, .renderTarget]
+        desc.storageMode = .private
+        rayOutputTexture = device.makeTexture(descriptor: desc)
+
+        let accumDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+
+        accumDesc.usage = [.shaderWrite, .shaderRead]
+        accumDesc.storageMode = .private
+        accumTexture = device.makeTexture(descriptor: accumDesc)
     }
 
     func invalidateAccumulation() {
         sampleIndex = 0
-        lastCameraPosition = simd_float3(repeating: .infinity)
-        lastCameraForward = simd_float3(repeating: .infinity)
-        lastCameraUp = simd_float3(repeating: .infinity)
+        //lastCameraPosition = simd_float3(repeating: .infinity)
+        //lastCameraForward = simd_float3(repeating: .infinity)
+        //lastCameraUp = simd_float3(repeating: .infinity)
     }
 
-    public func updateGPUBuffers() {
-        // only works if NO new instances are added
-        if let instanceBuffer = self.tlasInstanceBuffer {
-            let _ = scene.tlas!.tlasInstances.withUnsafeBufferPointer { ptr in
-                memcpy(instanceBuffer.contents(), ptr.baseAddress!, MemoryLayout<TLASInstance>.stride * scene.tlas!.tlasInstances.count)
+    public func updateTLASBuffers() {
+        guard let scene = scene, let tlas = scene.tlas else { return }
+        updateBuffer(&tlasInstanceBuffer, with: tlas.tlasInstances)
+        updateBuffer(&tlasNodeBuffer, with: tlas.tlasNodes)
+        invalidateAccumulation()
+    }
+
+    public func updateBLASBuffers() {
+        guard let scene = scene, let tlas = scene.tlas else { return }
+        updateBuffer(&materialBuffer, with: scene.materials)
+        updateBuffer(&blasNodeBuffer, with: tlas.blasNodes)
+        updateBuffer(&faceBuffer, with: tlas.faces)
+        updateVertexAttributesBuffer(vertices: scene.vertices)
+    }
+
+    private func updateBuffer<T>(
+        _ buffer: inout MTLBuffer?,
+        with elements: [T],
+        options: MTLResourceOptions = .storageModeShared
+    ) {
+        guard !elements.isEmpty else { return }
+        let requiredBytes = MemoryLayout<T>.stride * elements.count
+
+        if let existing = buffer, existing.length >= requiredBytes && existing.length <= requiredBytes * 2 {
+            let _ = elements.withUnsafeBufferPointer { ptr in
+                memcpy(existing.contents(), ptr.baseAddress!, requiredBytes)
             }
-        }
-        
-        if let tlasNodeBuffer = self.tlasNodeBuffer {
-            let _ = scene.tlas!.tlasNodes.withUnsafeBufferPointer { ptr in
-                memcpy(tlasNodeBuffer.contents(), ptr.baseAddress!, MemoryLayout<TLASNode>.stride * scene.tlas!.tlasNodes.count)
+        } else {
+            let targetCapacity = Int(Double(requiredBytes) * 1.25)
+            guard let newBuffer = device.makeBuffer(length: targetCapacity, options: options) else { buffer = nil; return }
+
+            let _ = elements.withUnsafeBufferPointer { ptr in
+                memcpy(newBuffer.contents(), ptr.baseAddress!, requiredBytes)
             }
+            
+            buffer = newBuffer
         }
     }
 
-    public func sceneChanged() {
-        updateGPUBuffers()
-        sampleIndex = 0
+    private func updateVertexAttributesBuffer(vertices: [Vertex]) {
+        guard !vertices.isEmpty else { vertexAttributesBuffer = nil; return }
+        let requiredBytes = MemoryLayout<RayTraceVertexAttributes>.stride * vertices.count
+
+        if let existing = vertexAttributesBuffer, existing.length >= requiredBytes && existing.length <= requiredBytes * 2 {
+            let dest = existing.contents().bindMemory(to: RayTraceVertexAttributes.self, capacity: vertices.count)
+            for (index, v) in vertices.enumerated() {
+                dest[index] = RayTraceVertexAttributes(normal: v.normal, uv: v.uv)
+            }
+            return
+        }
+
+        let attributes = vertices.map { RayTraceVertexAttributes(normal: $0.normal, uv: $0.uv) }
+        let targetCapacity = Int(Double(requiredBytes) * 1.25)
+
+        guard let newBuffer = device.makeBuffer(length: targetCapacity, options: .storageModeShared) else { return }
+        let _ = attributes.withUnsafeBufferPointer { ptr in
+            memcpy(newBuffer.contents(), ptr.baseAddress!, requiredBytes)
+        }
+
+        self.vertexAttributesBuffer = newBuffer
+    }
+
+    public func updateArgumentBuffer() {
+        guard let scene = scene else { return }
+        argumentEncoder.setTextures(scene.textures, range: 1 ..< scene.textures.count + 1)
+    }
+
+    public func setScene(_ newScene: Scene?) {
+        if (self.scene != nil) {
+            // Disconnect Subscriptions
+            if let connection = sceneTexturesAddedConnection    { connection.cancel() }
+            if let connection = sceneTLASReformedConnection     { connection.cancel() }
+            if let connection = sceneTLASRebuiltConnection     { connection.cancel() }
+            
+            sceneTexturesAddedConnection = nil
+            sceneTLASReformedConnection = nil
+            sceneTLASRebuiltConnection = nil
+        }
+
+        self.scene = newScene
+
+        // Create new subscriptions
+        guard let newScene = newScene else { return }
+        sceneTexturesAddedConnection  = newScene.texturesAdded.sink  { [weak self] in self?.updateArgumentBuffer() }
+        sceneTLASReformedConnection   = newScene.tlasReformed.sink   { [weak self] in self?.updateTLASBuffers()    }
+        sceneTLASRebuiltConnection    = newScene.tlasRebuilt.sink    { [weak self] in
+            self?.updateArgumentBuffer()
+            self?.updateTLASBuffers()
+            self?.updateBLASBuffers()
+        }
+        // TODO: think of reasons why updateBLASBuffers() should be called (When faces get added for example, submeshes too!)
+
+        updateArgumentBuffer()
+        updateTLASBuffers()
+        updateBLASBuffers()
     }
 
     func draw(view: MTKView, commandQueue: MTLCommandQueue) {
-        autoreleasepool {
-            if raytraceOnCPU {
-                print("CPU drawing is unavailable right now")
-                exit(1)
-                //calculateImageCPU(scene: scene) 
-            } else { // GPU
-                guard let drawable = view.currentDrawable else { return }
-                
-                func posNearlyEq(_ a: simd_float3, _ b: simd_float3) -> Bool { return simd_length(a - b) < 0.001 }
-                var cameraChanged: Bool = false
-                if !posNearlyEq(scene.camera.position, lastCameraPosition) || !posNearlyEq(scene.camera.forward, lastCameraForward) || !posNearlyEq(scene.camera.up, lastCameraUp) {
-                    lastCameraPosition = scene.camera.position
-                    lastCameraForward = scene.camera.forward
-                    lastCameraUp = scene.camera.up
-                    cameraChanged = true
-                }
-                let windowResolutionChanged = lastWidth != drawable.texture.width || lastHeight != drawable.texture.height 
-                if windowResolutionChanged {
-                    lastWidth = drawable.texture.width
-                    lastHeight = drawable.texture.height
-                }
+        if raytraceOnCPU {
+            print("CPU drawing is unavailable right now")
+            //calculateImageCPU(scene: scene)
+            exit(1)
+        }
 
-                sampleIndex = (cameraChanged || windowResolutionChanged) ? 0 : sampleIndex + 1
-                if sampleIndex == 0 {
-                    let accumTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: drawable.texture.width, height: drawable.texture.height, mipmapped: false)
-                    accumTextureDesc.usage = [.shaderWrite, .shaderRead]
-                    accumTextureDesc.storageMode = .private
-                    accumTexture = device.makeTexture(descriptor: accumTextureDesc)
-                }     
-                if sampleIndex >= maxSamples { // Camera did not move and max samples reached so stop new GPU processing
-                    return
-                } else {
+        autoreleasepool {
+            guard let commandBuffer = commandQueue.makeCommandBuffer(),
+                  let pass = view.currentRenderPassDescriptor,
+                  let drawable = view.currentDrawable else { return }
+
+            let camera: Camera? = scene?.camera
+            let P = camera?.position    ?? simd_float3(0, 0, 0)
+            let R = camera?.right       ?? simd_float3(1, 0, 0)
+            let U = camera?.up          ?? simd_float3(0, 1, 0)
+            let F = camera?.forward     ?? simd_float3(0, 0, 1)
+            
+            func posNearlyEq(_ a: simd_float3, _ b: simd_float3) -> Bool { return simd_length(a - b) < 0.001 }
+            var cameraChanged: Bool = false
+            if !posNearlyEq(P, lastCameraPosition) || !posNearlyEq(F, lastCameraForward) || !posNearlyEq(U, lastCameraUp) {
+                lastCameraPosition = P
+                lastCameraForward = F
+                lastCameraUp = U
+                cameraChanged = true
+            }
+            let windowResolutionChanged = lastWidth != drawable.texture.width || lastHeight != drawable.texture.height 
+            if windowResolutionChanged {
+                lastWidth = drawable.texture.width
+                lastHeight = drawable.texture.height
+            }
+
+            if cameraChanged || windowResolutionChanged { sampleIndex = 0 }
+            let flushTextures: Bool = sampleIndex == 0 || windowResolutionChanged
+            if (flushTextures && !raytracingPaused) {
+                createRayTexture(
+                    width: drawable.texture.width / outputWidthDivisor, 
+                    height: drawable.texture.height / outputHeightDivisor
+                )
+            }
+
+            // Camera did not move and max samples reached so stop new GPU processing
+            let skipRaytracing: Bool = (sampleIndex >= maxSamples) || raytracingPaused
+            if (!skipRaytracing) {
+                let now = CFAbsoluteTimeGetCurrent()
+                if now - lastTitleUpdateTimestamp >= titleUpdateInterval {
+                    lastTitleUpdateTimestamp = now
+                    
                     if let window = view.window {
-                        window.title = "Raytracer - Sample \(sampleIndex + 1) / \(maxSamples)"
+                        let title = String(format: "[ Raytracer - Sampling (%d / %d) | GPU: %.2f ms ]", 
+                                                    self.sampleIndex, maxSamples, self.lastFrameDuration)
+                        DispatchQueue.main.async { window.title = title }
                     }
                 }
 
-                // The Render Commands
-                let commandBuffer = commandQueue.makeCommandBuffer()!
                 let encoder = commandBuffer.makeComputeCommandEncoder()!
 
                 var uniforms = RayTracerUniforms(
                     sampleIndex: sampleIndex,
-                    sphereLightCount: Int32(scene.sphereLights.count),
                     fovScale: tan(FOVRad * 0.5), 
-                    cameraPosition: scene.camera.position,
-                    cameraForward: scene.camera.forward, 
-                    cameraUp: scene.camera.up,
-                    cameraRight: scene.camera.right
+                    cameraPosition: P,
+                    cameraForward: F, 
+                    cameraUp: U,
+                    cameraRight: R
                 )
                 memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<RayTracerUniforms>.stride)
 
                 encoder.setComputePipelineState(self.raytraceState)
-                encoder.setTexture(drawable.texture, index: 0)
+                // before: drawable.texture
+                encoder.setTexture(rayOutputTexture, index: 0)
                 encoder.setTexture(accumTexture, index: 1)
                 encoder.setTexture(accumTexture, index: 2)
                 
@@ -293,47 +418,66 @@ final class RayTracerRenderer: Renderer {
                 encoder.setBuffer(blasNodeBuffer, offset: 0, index: 4)
                 encoder.setBuffer(faceBuffer, offset: 0, index: 5)
                 encoder.setBuffer(argumentBuffer, offset: 0, index: 6)
-                for texture in scene.textures { encoder.useResource(texture, usage: .sample) }
+                encoder.setBuffer(vertexAttributesBuffer, offset: 0, index: 7)
+
+                if let scene = scene {
+                    for texture in scene.textures { encoder.useResource(texture, usage: .sample) }
+                }
 
                 let width = raytraceState.threadExecutionWidth
                 let height = raytraceState.maxTotalThreadsPerThreadgroup / width
                 let threadsPerThreadgroup = MTLSize(width: width, height: height, depth: 1)
-                let threadsPerGrid = MTLSize(width: drawable.texture.width, height: drawable.texture.height, depth: 1)
+                let threadsPerGrid = MTLSize(width: rayOutputTexture!.width, height: rayOutputTexture!.height, depth: 1)
                 encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-
                 encoder.endEncoding()
-                 if benchmarkGPUTime {
-                    if #available(macOS 10.15, *) {
-                        commandBuffer.addCompletedHandler { cb in  
-                            let gpuTime = (cb.gpuEndTime - cb.gpuStartTime) * 1000
-                            print("GPU Time: \(gpuTime) ms")
-                        }
+
+                commandBuffer.addCompletedHandler { [weak self] cb in
+                    guard let self = self else { return }  
+                    let durationMS = (cb.gpuEndTime - cb.gpuStartTime) * 1000
+                    Task { @MainActor in self.lastFrameDuration = durationMS }
+                }
+
+                sampleIndex += 1
+            } else {
+                if let window = view.window {
+                    if raytracingPaused {
+                        window.title = "[ Raytracer - Paused (\(sampleIndex) / \(maxSamples)) ]"
+                    } else if sampleIndex >= maxSamples {
+                        window.title = "[ Raytracer - Finished (\(sampleIndex) / \(maxSamples)) ]"
                     }
                 }
-                commandBuffer.present(drawable)
-                commandBuffer.commit()
-                commandBuffer.waitUntilCompleted()
+            }
 
-                // If save, save drawable texture as png to desktop when maxSamples reached and exit program
-                if saveAndExitOnGPU && sampleIndex >= maxSamples {
-                    //commandBuffer.waitUntilCompleted()
-                    let output = drawable.texture
-                    let bytesPerPixel = 4
-                    let bytesPerRow = output.width * bytesPerPixel
+            let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass)!
+            renderEncoder.setRenderPipelineState(upscalePipeline)
+            renderEncoder.setFragmentTexture(rayOutputTexture, index: 0)
+            renderEncoder.setFragmentSamplerState(fullscreenSampler, index: 0)
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            renderEncoder.endEncoding()
 
-                    var pixels = [UInt8](repeating: 0, count: output.height * bytesPerRow)
-                    output.getBytes(&pixels, bytesPerRow: bytesPerRow, from: MTLRegionMake2D(0, 0, output.width, output.height), mipmapLevel: 0)
+            commandBuffer.present(drawable)
+            commandBuffer.commit()
+            commandBuffer.waitUntilCompleted()
 
-                    let (cGWidth, cGHeight) = getScreenSize()
-                    let width = Int(cGWidth)
-                    let height = Int(cGHeight)
-                    if let image = createImage(width: width, height: height, pixelData: Data(pixels)) {
-                        saveImageToDesktop(name: outputImageName, image)
-                    } else {
-                        print("Failed to create image.")
-                    }
-                    exit(0)
+            // If save, save drawable texture as png to desktop when maxSamples reached and exit program
+            if saveAndExitOnGPU && sampleIndex >= maxSamples {
+                //commandBuffer.waitUntilCompleted()
+                let output = drawable.texture
+                let bytesPerPixel = 4
+                let bytesPerRow = output.width * bytesPerPixel
+
+                var pixels = [UInt8](repeating: 0, count: output.height * bytesPerRow)
+                output.getBytes(&pixels, bytesPerRow: bytesPerRow, from: MTLRegionMake2D(0, 0, output.width, output.height), mipmapLevel: 0)
+
+                let (cGWidth, cGHeight) = getScreenSize()
+                let width = Int(cGWidth)
+                let height = Int(cGHeight)
+                if let image = createImage(width: width, height: height, pixelData: Data(pixels)) {
+                    saveImageToDesktop(name: outputImageName, image)
+                } else {
+                    print("Failed to create image.")
                 }
+                exit(0)
             }
         }
     }

@@ -127,9 +127,9 @@ public func intersects4AABBs(
 }
 
 public func intersectsFace(origin: simd_float3, direction: simd_float3, face: RayTraceTriangleGPU, vertices: [Vertex]) -> RaycastResult {
-    let vertex0 = face.vertex0.position
-    let edge1 = face.vertex1.position - vertex0
-    let edge2 = face.vertex2.position - vertex0
+    let position0 = face.position0
+    let edge1 = face.position1 - position0
+    let edge2 = face.position2 - position0
     let normal = simd_cross(edge1, edge2)
     // Backface Culling, keeps CCW-wound triangles
     if simd_dot(normal, direction) > 0 { return RaycastResult() }
@@ -139,7 +139,7 @@ public func intersectsFace(origin: simd_float3, direction: simd_float3, face: Ra
     if abs(det) < epsilon { return RaycastResult() }
 
     let invDet = 1.0 / det
-    let s = origin - vertex0
+    let s = origin - position0
     let u = invDet * simd_dot(s, direction_cross_edge2)
     if u < -epsilon || u - 1 > epsilon { return RaycastResult() }
 
@@ -189,144 +189,138 @@ final class BLAS {
     }
 
 
-                    // Typealias to keep the code clean and match your computeBounds return type
-                    public typealias BoundsTuple = (min: simd_float3, max: simd_float3)
+    public typealias BoundsTuple = (min: simd_float3, max: simd_float3)
 
-                    /// Calculates the surface area of a bounding box tuple
-                    @inline(__always)
-                    private func surfaceArea(bounds: BoundsTuple) -> Float {
-                        let d = bounds.max - bounds.min
-                        // Handle negative or invalid bounds gracefully
-                        let x = max(0.0, d.x)
-                        let y = max(0.0, d.y)
-                        let z = max(0.0, d.z)
-                        return 2.0 * (x * y + y * z + z * x)
-                    }
+    @inline(__always)
+    private func surfaceArea(bounds: BoundsTuple) -> Float {
+        let d = bounds.max - bounds.min
+        // Handle negative or invalid bounds gracefully
+        let x = max(0.0, d.x)
+        let y = max(0.0, d.y)
+        let z = max(0.0, d.z)
+        return 2.0 * (x * y + y * z + z * x)
+    }
 
-                    /// Combines two bounding boxes together into a single wrapping bounding box
-                    @inline(__always)
-                    private func unionBounds(_ a: BoundsTuple, _ b: BoundsTuple) -> BoundsTuple {
-                        return (
-                            min: min(a.min, b.min),
-                            max: max(a.max, b.max)
-                        )
-                    }
-                        public func buildBVH2Node(faces: [RayTraceTriangleGPU], isRight: Bool, vertices: [Vertex]) -> BLASNodeBVH2 {
-                        let bounds = computeBounds(faces: faces, vertices: vertices)
-                        let node = BLASNodeBVH2(minBounds: bounds.min, maxBounds: bounds.max)
-                        let faceCount = faces.count
-                        
-                        if faceCount <= 4 { 
-                            return makeLeafNode(node, faces: faces)
-                        }
+    @inline(__always)
+    private func unionBounds(_ a: BoundsTuple, _ b: BoundsTuple) -> BoundsTuple {
+        return (
+            min: min(a.min, b.min),
+            max: max(a.max, b.max)
+        )
+    }
+    public func buildBVH2Node(faces: [RayTraceTriangleGPU], isRight: Bool, vertices: [Vertex]) -> BLASNodeBVH2 {
+        let bounds = computeBounds(faces: faces, vertices: vertices)
+        let node = BLASNodeBVH2(minBounds: bounds.min, maxBounds: bounds.max)
+        let faceCount = faces.count
+        
+        if faceCount <= 4 { 
+            return makeLeafNode(node, faces: faces)
+        }
 
-                        let extents = bounds.max - bounds.min
-                        var bestAxis = 0
-                        var bestSplitValue: Float = 0.0
-                        var minCost = Float.infinity
-                        
-                        let cTrav: Float = 1.0
-                        let cIsect: Float = 1.5 // Sightly higher weight to intersections helps reduce leaf size
-                        let parentSA = surfaceArea(bounds: bounds)
-                        
-                        // Number of spatial bins to test
-                        let numBins = 16
-                        
-                        // 1. Find the best split using spatial binning
-                        for axis in 0..<3 {
-                            if extents[axis] < 1e-5 { continue } // Skip flat axes
-                            
-                            // Allocate bins
-                            var binCount = [Int](repeating: 0, count: numBins)
-                            var binBounds = [BoundsTuple](repeating: (min: simd_float3(repeating: Float.infinity), max: simd_float3(repeating: -Float.infinity)), count: numBins)
-                            
-                            // Populate bins
-                            for face in faces {
-                                let c = centroid(face)[axis]
-                                // Map centroid to a bin index [0 ... numBins-1]
-                                var binIdx = Int(((c - bounds.min[axis]) / extents[axis]) * Float(numBins))
-                                binIdx = max(0, min(numBins - 1, binIdx))
-                                
-                                binCount[binIdx] += 1
-                                let faceB = computeBounds(faces: [face], vertices: scene.vertices)
-                                binBounds[binIdx] = unionBounds(binBounds[binIdx], faceB)
-                            }
-                            
-                            // Evaluate SAH cost at each of the (numBins - 1) split planes
-                            // Precompute right-to-left suffix bounds for the bins
-                            var rightBounds = [BoundsTuple](repeating: (min: simd_float3(repeating: 0), max: simd_float3(repeating: 0)), count: numBins)
-                            var rightCount = [Int](repeating: 0, count: numBins)
-                            
-                            var currentRightBounds = (min: simd_float3(repeating: Float.infinity), max: simd_float3(repeating: -Float.infinity))
-                            var currentRightCount = 0
-                            
-                            for i in (0..<numBins).reversed() {
-                                currentRightBounds = unionBounds(currentRightBounds, binBounds[i])
-                                currentRightCount += binCount[i]
-                                rightBounds[i] = currentRightBounds
-                                rightCount[i] = currentRightCount
-                            }
-                            
-                            // Sweep left-to-right over bin boundaries
-                            var leftBounds = (min: simd_float3(repeating: Float.infinity), max: simd_float3(repeating: -Float.infinity))
-                            var leftCount = 0
-                            
-                            for i in 0..<(numBins - 1) {
-                                leftBounds = unionBounds(leftBounds, binBounds[i])
-                                leftCount += binCount[i]
-                                
-                                if leftCount == 0 || rightCount[i + 1] == 0 { continue }
-                                
-                                let saLeft = surfaceArea(bounds: leftBounds)
-                                let saRight = surfaceArea(bounds: rightBounds[i + 1])
-                                
-                                let cost = cTrav + (saLeft / parentSA * Float(leftCount) * cIsect) + (saRight / parentSA * Float(rightCount[i + 1]) * cIsect)
-                                
-                                if cost < minCost {
-                                    minCost = cost
-                                    bestAxis = axis
-                                    // The spatial split plane value
-                                    bestSplitValue = bounds.min[axis] + (extents[axis] / Float(numBins)) * Float(i + 1)
-                                }
-                            }
-                        }
+        let extents = bounds.max - bounds.min
+        var bestAxis = 0
+        var bestSplitValue: Float = 0.0
+        var minCost = Float.infinity
+        
+        let cTrav: Float = 1.0
+        let cIsect: Float = 1.5 // Sightly higher weight to intersections helps reduce leaf size
+        let parentSA = surfaceArea(bounds: bounds)
+        
+        // Number of spatial bins to test
+        let numBins = 16
+        
+        // 1. Find the best split using spatial binning
+        for axis in 0..<3 {
+            if extents[axis] < 1e-5 { continue } // Skip flat axes
+            
+            // Allocate bins
+            var binCount = [Int](repeating: 0, count: numBins)
+            var binBounds = [BoundsTuple](repeating: (min: simd_float3(repeating: Float.infinity), max: simd_float3(repeating: -Float.infinity)), count: numBins)
+            
+            // Populate bins
+            for face in faces {
+                let c = centroid(face)[axis]
+                // Map centroid to a bin index [0 ... numBins-1]
+                var binIdx = Int(((c - bounds.min[axis]) / extents[axis]) * Float(numBins))
+                binIdx = max(0, min(numBins - 1, binIdx))
+                
+                binCount[binIdx] += 1
+                let faceB = computeBounds(faces: [face], vertices: scene.vertices)
+                binBounds[binIdx] = unionBounds(binBounds[binIdx], faceB)
+            }
+            
+            // Evaluate SAH cost at each of the (numBins - 1) split planes
+            // Precompute right-to-left suffix bounds for the bins
+            var rightBounds = [BoundsTuple](repeating: (min: simd_float3(repeating: 0), max: simd_float3(repeating: 0)), count: numBins)
+            var rightCount = [Int](repeating: 0, count: numBins)
+            
+            var currentRightBounds = (min: simd_float3(repeating: Float.infinity), max: simd_float3(repeating: -Float.infinity))
+            var currentRightCount = 0
+            
+            for i in (0..<numBins).reversed() {
+                currentRightBounds = unionBounds(currentRightBounds, binBounds[i])
+                currentRightCount += binCount[i]
+                rightBounds[i] = currentRightBounds
+                rightCount[i] = currentRightCount
+            }
+            
+            // Sweep left-to-right over bin boundaries
+            var leftBounds = (min: simd_float3(repeating: Float.infinity), max: simd_float3(repeating: -Float.infinity))
+            var leftCount = 0
+            
+            for i in 0..<(numBins - 1) {
+                leftBounds = unionBounds(leftBounds, binBounds[i])
+                leftCount += binCount[i]
+                
+                if leftCount == 0 || rightCount[i + 1] == 0 { continue }
+                
+                let saLeft = surfaceArea(bounds: leftBounds)
+                let saRight = surfaceArea(bounds: rightBounds[i + 1])
+                
+                let cost = cTrav + (saLeft / parentSA * Float(leftCount) * cIsect) + (saRight / parentSA * Float(rightCount[i + 1]) * cIsect)
+                
+                if cost < minCost {
+                    minCost = cost
+                    bestAxis = axis
+                    // The spatial split plane value
+                    bestSplitValue = bounds.min[axis] + (extents[axis] / Float(numBins)) * Float(i + 1)
+                }
+            }
+        }
 
-                        // Fallback to leaf if splitting doesn't help
-                        let leafCost = Float(faceCount) * cIsect
-                        if minCost >= leafCost && faceCount <= 8 {
-                            return makeLeafNode(node, faces: faces)
-                        }
+        // Fallback to leaf if splitting doesn't help
+        let leafCost = Float(faceCount) * cIsect
+        if minCost >= leafCost && faceCount <= 8 {
+            return makeLeafNode(node, faces: faces)
+        }
 
-                        // 2. Partition faces based on the chosen spatial split value
-                        let left = faces.filter { centroid($0)[bestAxis] < bestSplitValue }
-                        let right = faces.filter { centroid($0)[bestAxis] >= bestSplitValue }
-                        
-                        // Guard against bad splits that fail to separate primitives (e.g. identical centroids)
-                        if left.isEmpty || right.isEmpty {
-                            let middle = faces.count / 2
-                            let sorted = faces.sorted { centroid($0)[bestAxis] < centroid($1)[bestAxis] }
-                            return buildLeftRightNodes(node, left: Array(sorted[..<middle]), right: Array(sorted[middle...]), isRight: isRight)
-                        }
+        let left = faces.filter { centroid($0)[bestAxis] < bestSplitValue }
+        let right = faces.filter { centroid($0)[bestAxis] >= bestSplitValue }
+        
+        if left.isEmpty || right.isEmpty {
+            let middle = faces.count / 2
+            let sorted = faces.sorted { centroid($0)[bestAxis] < centroid($1)[bestAxis] }
+            return buildLeftRightNodes(node, left: Array(sorted[..<middle]), right: Array(sorted[middle...]), isRight: isRight)
+        }
 
-                        return buildLeftRightNodes(node, left: left, right: right, isRight: isRight)
-                    }
+        return buildLeftRightNodes(node, left: left, right: right, isRight: isRight)
+    }
 
-                    private func buildLeftRightNodes(_ node: BLASNodeBVH2, left: [RayTraceTriangleGPU], right: [RayTraceTriangleGPU], isRight: Bool) -> BLASNodeBVH2 {
-                        node.left = buildBVH2Node(faces: left, isRight: false, vertices: scene.vertices)
-                        node.right = buildBVH2Node(faces: right, isRight: isRight, vertices: scene.vertices)
-                        return node
-                    }
+    private func buildLeftRightNodes(_ node: BLASNodeBVH2, left: [RayTraceTriangleGPU], right: [RayTraceTriangleGPU], isRight: Bool) -> BLASNodeBVH2 {
+        node.left = buildBVH2Node(faces: left, isRight: false, vertices: scene.vertices)
+        node.right = buildBVH2Node(faces: right, isRight: isRight, vertices: scene.vertices)
+        return node
+    }
 
-                    /// Helper to handle leaf generation safely
-                    private func makeLeafNode(_ node: BLASNodeBVH2, faces: [RayTraceTriangleGPU]) -> BLASNodeBVH2 {
-                        node.left = nil
-                        node.right = nil
-                        node.faceOffset = leafFaceOffset + faceOffset
-                        leafFaceOffset += Int32(faces.count)
-                        node.faceCount = Int32(faces.count)
-                        self.leafFaces.append(contentsOf: faces)
-                        return node
-                    }
+    private func makeLeafNode(_ node: BLASNodeBVH2, faces: [RayTraceTriangleGPU]) -> BLASNodeBVH2 {
+        node.left = nil
+        node.right = nil
+        node.faceOffset = leafFaceOffset + faceOffset
+        leafFaceOffset += Int32(faces.count)
+        node.faceCount = Int32(faces.count)
+        self.leafFaces.append(contentsOf: faces)
+        return node
+    }
 
     /*
     public func buildBVH2Node(faces: [RayTraceTriangleGPU], isRight: Bool) -> BLASNodeBVH2 {
@@ -357,6 +351,23 @@ final class BLAS {
         let nodeIndex = blasNodes.count
         var blasNode = BLASNode()
         blasNodes.append(blasNode) // placeholder
+
+        // For nodes that have 4 or less faces in the root
+        if node.left == nil && node.right == nil {
+            blasNode.minBoundsX[0] = node.minBounds.x
+            blasNode.minBoundsY[0] = node.minBounds.y
+            blasNode.minBoundsZ[0] = node.minBounds.z
+
+            blasNode.maxBoundsX[0] = node.maxBounds.x
+            blasNode.maxBoundsY[0] = node.maxBounds.y
+            blasNode.maxBoundsZ[0] = node.maxBounds.z
+
+            blasNode.faceOffsets[0] = node.faceOffset
+            blasNode.faceCounts[0] = node.faceCount
+
+            blasNodes[nodeIndex] = blasNode
+            return
+        }
 
         func setLane(child: BLASNodeBVH2?, grandChild: BLASNodeBVH2?, index: Int) {
             guard let child = child else { return }
@@ -454,9 +465,9 @@ final class BLAS {
         }
 
         for face in faces {
-            include(face.vertex0.position)
-            include(face.vertex1.position)
-            include(face.vertex2.position)
+            include(face.position0)
+            include(face.position1)
+            include(face.position2)
         }
 
         return (min: minV, max: maxV)
@@ -474,7 +485,7 @@ final class BLAS {
     }
 
     private func centroid(_ face: RayTraceTriangleGPU) -> simd_float3 {
-        return (face.vertex0.position + face.vertex1.position + face.vertex2.position) / 3.0
+        return (face.position0 + face.position1 + face.position2) / 3.0
     }
 
     public func makeGPUFaces() -> [RayTraceTriangleGPU] {
@@ -482,14 +493,14 @@ final class BLAS {
         for faceIndex in mesh.faceOffset ..< mesh.faceOffset + mesh.faceCount {
             let face = scene.faces[Int(faceIndex)]
             let subMesh = scene.subMeshes[Int(face.subMeshIndex)]
-            let vertex0 = scene.vertices[Int(face.vertexIndices.x)]
-            let vertex1 = scene.vertices[Int(face.vertexIndices.y)]
-            let vertex2 = scene.vertices[Int(face.vertexIndices.z)]
+            let position0 = scene.vertices[Int(face.vertexIndex0)].position
+            let position1 = scene.vertices[Int(face.vertexIndex1)].position
+            let position2 = scene.vertices[Int(face.vertexIndex2)].position
             //let edge1 = vertex2.position - vertex1.position
             //let edge2 = vertex3.position - vertex1.position
             faces.append(RayTraceTriangleGPU(
-                vertex0: vertex0, vertex1: vertex1, vertex2: vertex2, 
-                //edge1: edge1, edge2: edge2,
+                position0: position0, position1: position1, position2: position2, 
+                vertexIndex0: face.vertexIndex0, vertexIndex1: face.vertexIndex1, vertexIndex2: face.vertexIndex2,
                 // TODO: Change to 3 normals in future
                 //normal: simd_normalize(simd_cross(edge1, edge2)),
                 materialIndex: subMesh.materialIndex

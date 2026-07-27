@@ -1,0 +1,134 @@
+* All offsets are relative to 0, the start of the main SCN0 file, in other words, they are absolute positions, pointers
+
+
+SCN0 File Format:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+u32                 | 'SCN0'                | Magic Number
+u32                 | versionNumber         | if SCN0 layout changes, this is required to still decode older versions
+u64                 | fileSize              | Length in bytes of the whole file
+u32                 | sectionCount          | how many sections there are, for example in the case of: (INFO, DLTA) = 2 sections; sectionCount = 2
+u32                 | padding               | -
+u64                 | tocOffset             | offset to Table Of Contents
+
+
+
+Table Of Contents:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---[ Entries (count: sectionCount) ]--- 
+u32                 | fourCC                | Four character code for section, for example: 'VERT'
+u32                 | flags                 | settings
+u64                 | totalSize             | size of section payload (data excluding its header)
+u64                 | dataOffset            | offset to data
+
+
+
+Sections:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---[ Vertices (Magic Number: 'VERT') ]---
+u64                 | vertexCount           | amount of vertices present in this section
+
+(Repeats `vertexCount` times) (struct Vertex)
+float3              | position
+float3              | normal
+float               | padding
+float2              | UV
+
+
+---[ Materials (Magic Number: 'MAT0') ]---
+u64                 | materialCount
+
+(Repeats `materialCount` times)
+float3              | diffuseColor (Kd)
+float3              | emissionColor (Ke)
+float               | dissolve (d)
+float               | roughness (Pr)
+float               | metallic (Pm)
+u16                 | diffuseTextureIndex (map_Kd)
+u16                 | dissolveTextureIndex (map_d)
+u16                 | isSky
+u16                 | padding
+
+
+---[ Rasterizer Faces (Magic Number: 'FACE') ]---
+u64                 | facesCount
+
+(Repeats `faceCount` times)
+uint3               | vertexIndices
+i32                 | subMeshIndex
+
+
+---[ Raytracer Faces (Magic Number: 'RFAC') ]---
+u64                 | raytracerFacesCount
+
+(Repeats `raytracerFacesCount` times) - TODO: missing padding
+struct Vertex       | vertex0
+struct Vertex       | vertex1
+struct Vertex       | vertex2
+i32                 | materialIndex
+
+
+---[ BLAS Nodes (Magic Number: 'BNOD') ]---
+u64                 | blasNodeCount
+
+(Repeats `blasNodeCount` times)
+float4              | minBoundsX
+float4              | minBoundsY
+float4              | minBoundsZ
+float4              | maxBoundsX
+float4              | maxBoundsY
+float4              | maxBoundsZ
+int4                | childIndices
+int4                | faceOffsets
+int4                | faceCounts
+
+
+---[ TLAS Instances (Magic Number: 'TINS) ]---
+u64                 | tlasInstanceCount
+
+(Repeats `tlasInstanceCount` times)
+float4x4            | modelMatrix
+float4x4            | invModelMatrix
+float3x3            | invNormalMatrix
+i32                 | blasStartIndex
+[u32; 3]            | padding
+
+
+---[ TLAS Nodes (Magic Number: 'TNOD') ]---
+u64                 | tlasNodeCount
+
+(Repeats `tlasNodeCount` times)
+float4              | minBoundsX
+float4              | minBoundsY
+float4              | minBoundsZ
+float4              | maxBoundsX
+float4              | maxBoundsY
+float4              | maxBoundsZ
+int4                | childIndices
+int4                | tlasInstanceIndices
+
+
+
+
+---[ TextureLinks (Magic Number: 'TEXL' ) ]---
+u64                 | textureLinkCount
+
+(Repeats `textureLinkCount` times)
+u16                 | textureIndex          | To which index the texture maps to
+u16                 | padding               | -
+u32                 | textureNameOffset     | At this offset is a fat-array of characters that gives the filepath to the texture 
+
+
+String Pool:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Exists out of fat-arrays of characters:
+u32                 | stringLength
+[u8; stringLength]  | characterArray
+
+
+
+
+
+
+

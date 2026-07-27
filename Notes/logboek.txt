@@ -661,10 +661,74 @@ file Spawnpoint1 zijn properties aanpas, veranderen die van Part1!
 na een lange lange tijd heb ik eindelijk skyboxes aan de praat, wel laggy!
 
 
-TODO: Verander IndexedFace naar TraversalFace, houd vertices + materialIndex
+25-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 14:03-19:01 (duur: 4 uur, 58 min. ) ]
+Ik heb een nieuw theorie voor waarom die spawnpoint texture niet laadt:
+Het is een zwarte texture, misschien is mijn code daarom het licht ofzo niet
+aan het renderen? 
+Update: Nee dat was niet de reden. De reden was dat in mijn flattenBVH2 functie,
+ik een mogelijkheid was vergeten dat een root node slechts 4 of minder faces kan hebben,
+een quad zoals die van de spawnpoint bestaat in mijn programma uit slechts 2 driehoeken.
+Die werden dus geskipt in het bouwen van de BVH... ongelofelijk.
+EINDELIJk werkt die texture!
+Ik ben nu vooral bezig met weer bugs fixen.
+Ik heb wat QOL dingen toegevoegd en de grote bugs gefixt.
+
+[ 19:32-20:28 ( duur: 56 min. ) ]
+Ik heb skyboxes iets aangepast zodat maar de helft van de texture RGB invloed heeft op de radiance.
+Met 100% en een cartoony blauwe skybox wordt ALLES blauw en dat ziet er SLECHT uit.
+
+[ 23:20-03:11 (duur: 3 uur, 51 min. ) ]
+Nadenken over een goeie architectuur voor de Engine zelf. 
+Gebruik nu swifts PassThroughSubject, veel beter.
+Heb raycasting gefixt op CPU, nu als je Linker muis knop indrukt, spawnt er een FriedChicken in op de plek van de hit
+Op dit moment heb ik geen TLAS reform functie dus de hele TLAS en BLAS'en worden opnieuw gemaakt, zorgt voor een grote lagspike.
+
+
+26-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 10:38-12:17 (duur: 1 uur, 39 min. ) ]
+Ik denk dat de rasterizer bug komt door de Normal, want die wordt opnieuw
+berekend in de Raytracer, dat kan oprecht het enige zijn, als ik
+shaded uit zet gebeurd de glitch niet.
+NEE BLIJKT TOCH NIET? ??????? alpha dan?
+
+[ 22:11-22:58 (duur: 47 min. ) ]
+Het bleek de vertex Normal te zijn, omdat als de object importer geen "vn" kan vinden,,
+hij voor elke vertex de zelfde [0, 1, 0] geeft i.p.v. eentje generaten.
+De raytracer maakt altijd een normal wanneer er geraycast wordt dus daar zit geen probleem
+Door het inproduct te clampen is de texture eindelijk niet meer wit yess!!
+
+[ 00:24-02:15 (duur: 1 uur, 51 min.) ]
+Denken over hoe TLAS kan worden gesaved naar een binary file.
+Plannen van een Scene Binary File (Notes/SCN0.txt)
+Veel voordelen: extreem snelle load times, scene deltas kunnen worden opgeslagen,
+editing simpeler, etc.
+Deltas = veranderingen aan de scene.
+
+
+27-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:43-13:00 (duur: 3 uur, 17 min.) ]
+Ik ga proberen de BLAS beter te maken door de raytracing triangle structure een tikkie aan te passen.
+Update: volgens mij is het niet beter.
+Andere QOL improvements gemaakt
+
+Bugs: 
+* Normals worden nog niet helemaal goed gegenereerd wanneer ze missen in een .obj file
+* Transparency drawcall sorting is heel slecht
+* (IRRITANT) Soms loopt het programma vast in raytracing, als je dan switcht naar Rasterizer of het pauseerd, dan is het scherm bevroren,
+    soms glitcht het scherm gewoon en begint te haperen
+    soms bevroren voor altijd, maar kan wel heen en weer bewegen en raycasting update, scherm alleen niet
+
+TODO: 
+* Verander IndexedFace naar TraversalFace, houd vertices + materialIndex
 als hit: shading array die direct naar UV en Normal indexed, shadingFaces[faceIndex] = vertexIndex
 * Als position verandert van een mesh, moet pivot dan mee?
 * Voeg een isVisible optie toe aan TLASInstance en Mesh 
+* Voeg toe dat de TLAS en BLAS kunnen worden gecached in een file voor snellere loadtimes volgende keer
+* semaphores toevoegen aan zowel de rasterizer als raycaster
 
 =============================================================================================================================================
 

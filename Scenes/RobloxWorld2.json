@@ -6,21 +6,12 @@
     },
     "assets": [
         {
-            "source": "Assets/RobloxWorld2/RobloxWorld2.obj",
-            "children": [
-                {
-                    "name": "Spawnlocation1",
-                    "material": {
-                        "dissolve": 0,
-                        "isSky": true
-                    }
-                }
-            ]
+            "source": "Assets/RobloxWorld2/RobloxWorld2.obj"
         }
     ],
     "camera": {
         "position": [0, 0, 0],
-        "rotation": [0, 20, 0]
+        "rotation": [0, 180, 0]
     },
     "sphereLights": [
         {

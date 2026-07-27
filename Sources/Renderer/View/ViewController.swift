@@ -12,8 +12,7 @@ class ViewController: NSViewController, MTKViewDelegate {
     public var currentRenderer: Renderer!
     public var rasterRenderer: RasterRenderer!
     public var raytracerRenderer: RayTracerRenderer!
-    public var raytraceScalingFactor: CGFloat = 0.5
-    public var lastUsedRenderer: Renderer? = nil
+    public var lastUsedRenderMode: RenderMode = .Rasterizer
 
     init(device: MTLDevice, scene: Scene) {
         self.device = device
@@ -27,59 +26,36 @@ class ViewController: NSViewController, MTKViewDelegate {
     override func loadView() {
         commandQueue = device.makeCommandQueue()
 
-        currentRenderer = rasterRenderer
         rasterRenderer = RasterRenderer(device: device, scene: scene)
         raytracerRenderer = RayTracerRenderer(device: device, scene: scene)
+        currentRenderer = rasterRenderer
 
         gameView = GameView(frame: .zero, device: device)
         gameView.clearColor = MTLClearColorMake(0.1, 0.1, 0.1, 1)
-        gameView.scene = scene
         gameView.delegate = self
-        gameView.framebufferOnly = true
+        gameView.framebufferOnly = false
         gameView.depthStencilPixelFormat = .depth32Float
+        gameView.colorPixelFormat = .bgra8Unorm_srgb
         gameView.autoResizeDrawable = true
         self.view = gameView
 
         DispatchQueue.main.async { self.gameView.window?.makeFirstResponder(self.gameView) }
     }
     func draw(in view: MTKView) {
-        if scene.tlasReformed {
-            scene.tlasReformed = false
-            rasterRenderer.sceneChanged()
-            raytracerRenderer.sceneChanged()
-        }
-
         switch renderMode {
             case .Rasterizer: 
-                if lastUsedRenderer is RayTracerRenderer {
-                    if let window = view.window {
-                        window.title = "[ Rasterizer - Raytracer ]"
-                    }
+                if lastUsedRenderMode != .Rasterizer {
+                    currentRenderer = rasterRenderer
                 }
-
-                currentRenderer = rasterRenderer
-                raytracerRenderer.invalidateAccumulation()
-
-                gameView.autoResizeDrawable = true
-                gameView.drawableSize = CGSize(
-                    width: view.bounds.width * (view.window?.screen?.backingScaleFactor ?? 1), 
-                    height: view.bounds.height * (view.window?.screen?.backingScaleFactor ?? 1)
-                )
-
             case .Raytracer: 
-                currentRenderer = raytracerRenderer
-
-                // To downscale the image size when Raytracing
-                gameView.autoResizeDrawable = false
-                gameView.drawableSize = CGSize(
-                    width: view.bounds.width * (view.window?.screen?.backingScaleFactor ?? 1) * self.raytraceScalingFactor, 
-                    height: view.bounds.height * (view.window?.screen?.backingScaleFactor ?? 1) * self.raytraceScalingFactor
-                )
+                if lastUsedRenderMode != .Raytracer { 
+                    currentRenderer = raytracerRenderer
+                }
         }
 
-        gameView.updateControls(camera: &scene.camera)
+        if !(raytracingPaused && renderMode == .Raytracer) { gameView.updateControls(camera: &scene.camera) }
         currentRenderer.draw(view: view, commandQueue: commandQueue)
-        lastUsedRenderer = currentRenderer
+        lastUsedRenderMode = renderMode
     }
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         setScreenSize(newWidth: size.width, newHeight: size.height)

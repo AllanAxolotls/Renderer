@@ -36,6 +36,9 @@ private struct SceneAsset: Codable {
     let importAtOrigin: Bool?
     let importOffset: Vec3? // Even with importAtOrigin, will offset
     let importCCWFaces: Bool?
+    let flipX: Bool?
+    let flipY: Bool?
+    let flipZ: Bool?
     let children: [SceneAssetChild]?
 }
 
@@ -50,6 +53,7 @@ private struct SceneAssetChild: Codable {
 private struct SceneAssetMaterial: Codable {
     let diffuseColor: Vec3?
     let dissolve: Float?
+    let diffuseTextureIndex: Int?
     let isSky: Bool?
 }
 
@@ -68,9 +72,8 @@ private struct SceneSphereLight: Codable {
 public func createScene(objectImporter: ObjectImporter) -> Scene {
     let scene = Scene() 
     let defaultDiffuseTexture = objectImporter.materialImporter.getDefaultDiffuseTexture()
-    let defaultDissolveTexture = objectImporter.materialImporter.getDefaultDissolveTexture()
-    if let defaultDiffuseTexture = defaultDiffuseTexture, let defaultDissolveTexture = defaultDissolveTexture {
-        scene.addDefaultTextures(diffuseTexture: defaultDiffuseTexture, dissolveTexture: defaultDissolveTexture)
+    if let defaultDiffuseTexture = defaultDiffuseTexture {
+        scene.addDefaultTextures(diffuseTexture: defaultDiffuseTexture)
     }
     return scene
 }
@@ -99,8 +102,12 @@ public func importToScene(scene: inout Scene, filePath: String, objectImporter: 
     for asset in sceneData.assets ?? [] {
         guard let source = asset.source else { continue }
         objectImporter.importAtOrigin = asset.importAtOrigin ?? false
-        objectImporter.importCCWFaces = asset.importCCWFaces ?? true
+        objectImporter.importCCWFaces = asset.importCCWFaces ?? false
         objectImporter.importOffset = asset.importOffset?.value ?? simd_float3(0, 0, 0)
+        objectImporter.flipX = asset.flipX ?? false
+        objectImporter.flipY = asset.flipY ?? false
+        objectImporter.flipZ = asset.flipZ ?? true
+
         var object = objectImporter.importObject(filePath: source)
         
         // Set Mesh Transformation here 
@@ -124,6 +131,9 @@ public func importToScene(scene: inout Scene, filePath: String, objectImporter: 
                         if let dissolve = material.dissolve { 
                             object.materials[matIdx].dissolve = dissolve 
                         }
+                        if let diffuseTextureIndex = material.diffuseTextureIndex {
+                            object.materials[matIdx].diffuseTextureIndex = Int16(diffuseTextureIndex)
+                        }
                         if let isSky = material.isSky { 
                             object.materials[matIdx].isSky = isSky ? 1 : 0 
                         }
@@ -145,13 +155,14 @@ public func importToScene(scene: inout Scene, filePath: String, objectImporter: 
         scene.addAsset(object)
     }
 
+/*
     for sphereLight in sceneData.sphereLights ?? [] {
         scene.sphereLights.append(SphereLight(
             position: sphereLight.position.value, 
             emission: sphereLight.emission.value,
             radius: sphereLight.radius
         ))
-    }
+    }*/
 }
 
 public func importScene(filePath: String, objectImporter: ObjectImporter) -> Scene {

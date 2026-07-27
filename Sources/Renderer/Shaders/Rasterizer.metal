@@ -3,8 +3,8 @@ using namespace metal;
 
 struct Vertex {
     float3 position;
-    float2 uv;
     float3 normal;
+    float2 uv;
 };
 
 struct Material {
@@ -13,9 +13,9 @@ struct Material {
     //float3 specularColor; // currently unused
     float3 emissionColor;
     //short ambientTextureIndex; // currently unused
-    short diffuseTextureIndex; // -1 = no texture
+    short diffuseTextureIndex;
     //short specularTextureIndex; // currently unused
-    short dissolveTextureIndex;
+    short dissolveTextureIndex; // -1 = no texture
     //short bumpTextureIndex; // currently unused
     // need to add a normalTexture too
     //short illuminationModel; // currently unused
@@ -60,7 +60,7 @@ fragment float4 fmain(
     float4 albedo = float4(material.diffuseColor, 1.0f) * tex.sample(samp, in.uv);
     float alpha = albedo.a * material.dissolve;
 
-    if (material.dissolveTextureIndex != 1) {
+    if (material.dissolveTextureIndex != -1) {
         alpha *= dissolveTex.sample(samp, in.uv).a;
     }
 
@@ -68,8 +68,9 @@ fragment float4 fmain(
         discard_fragment();
     }
 
-    //float factor = (dot(in.normal, float3(0, 1, 0)) + 1.0) * 0.5f;
-    //float3 shaded = albedo.rgb * (factor * 0.5 + 0.5);
-    //return float4(shaded, albedo.a * material.dissolve);
-    return float4(albedo.rgb, alpha);
+    if (material.isSky) return float4(albedo.rgb, alpha);
+    float3 n = normalize(in.normal);
+    float lighting = clamp(dot(n, float3(0, 1, 0)) * 0.5f + 0.5f, 0.0f, 1.0f);
+    float3 shaded = albedo.rgb * (0.5f + 0.5f * lighting);
+    return float4(shaded, alpha);
 }
