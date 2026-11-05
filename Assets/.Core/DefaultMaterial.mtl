@@ -1,0 +1,16 @@
+# Ryx's Default Material
+
+# Creates a new Material
+newmtl DefaultMaterial
+
+# Diffuse Color
+Kd 0.8 0.8 0.8
+
+# Emission Color
+Ke 0.0 0.0 0.0
+
+# Opaqueness
+d 1.0
+
+# Diffuse Texture (1x1 white pixel)
+mapKd DefaultTexture.png

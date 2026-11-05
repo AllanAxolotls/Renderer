@@ -1,0 +1,23 @@
+{
+    "sceneMetaData": {
+        "name": "Scene 1",
+        "version": "1.0",
+        "ambientColor": [1, 1, 1]
+    },
+    "assets": [
+        {
+            "source": "Assets/RobloxWorld2/RobloxWorld2.obj"
+        }
+    ],
+    "camera": {
+        "position": [0, 0, 0],
+        "rotation": [0, 180, 0]
+    },
+    "sphereLights": [
+        {
+            "position": [0, 0, 0],
+            "emission": [100, 0, 0],
+            "radius": 10
+        }
+    ]
+}

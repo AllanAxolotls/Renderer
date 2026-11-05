@@ -1,0 +1,28 @@
+{
+    "sceneMetaData": {
+        "name": "Scene 1",
+        "version": "1.0",
+        "ambientColor": [1, 1, 1]
+    },
+    "assets": [
+        {
+            "source": "Assets/Pokepark/Area7/FdAr07Zn01/FdAr07Zn01.obj"
+        },
+        {
+            "source": "Assets/Pokepark/Area7/PeFdAr07Zn01SKY/PeFdAr07Zn01SKY.obj",
+            "children": [
+                {
+                    "name": "polygon1",
+                    "material": {
+                        "isSky": true
+                    }
+                }
+            ]
+        }
+    ],
+    "camera": {
+        "position": [0, 0, 0],
+        "rotation": [0, 20, 0],
+        "moveSpeed": 400
+    }
+}

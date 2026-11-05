@@ -1,0 +1,25 @@
+# Generated with https://github.com/AllanAxolotls/Brres
+
+newmtl sky1_0
+map_Ka ./Textures/sky1_0.png
+map_Kd ./Textures/sky1_0.png
+newmtl FdAr01_bgMountain01_1
+map_Ka ./Textures/FdAr01_bgMountain01_1.png
+map_Kd ./Textures/FdAr01_bgMountain01_1.png
+map_d ./Textures/FdAr01_bgMountain01_1.png
+d 1.0
+newmtl FdAr01_sun01
+map_Ka ./Textures/FdAr01_sun01.png
+map_Kd ./Textures/FdAr01_sun01.png
+map_d ./Textures/FdAr01_sun01.png
+d 1.0
+newmtl FdAr06Zn02cloud00_fur_2
+map_Ka ./Textures/FdAr06Zn02cloud00_fur_2.png
+map_Kd ./Textures/FdAr06Zn02cloud00_fur_2.png
+map_d ./Textures/FdAr06Zn02cloud00_fur_2.png
+d 1.0
+newmtl FdAr06Zn02cloud01_fur
+map_Ka ./Textures/FdAr06Zn02cloud01_fur.png
+map_Kd ./Textures/FdAr06Zn02cloud01_fur.png
+map_d ./Textures/FdAr06Zn02cloud01_fur.png
+d 1.0

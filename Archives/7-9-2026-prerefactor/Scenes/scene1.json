@@ -1,0 +1,28 @@
+{
+    "sceneMetaData": {
+        "name": "Scene 1",
+        "version": "1.0",
+        "ambientColor": [1, 1, 1]
+    },
+    "assets": [
+        {
+            "source": "Assets/FriedChicken/FriedChicken.obj"
+        },
+        {
+            "source": "Assets/Heart/Heart.obj",
+            "children": [
+                { 
+                    "name": "Heart", 
+                    "position": [0, 0, 2],
+                    "material": {
+                        "dissolve": 0.9
+                    }
+                }
+            ]
+        }
+    ],
+    "camera": {
+        "position": [0, 0, 5],
+        "rotation": [0, 180, 0]
+    }
+}

@@ -1,0 +1,1 @@
+class Model : Object {}

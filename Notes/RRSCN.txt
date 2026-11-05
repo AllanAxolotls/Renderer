@@ -1,0 +1,166 @@
+* All SCN0 offsets are relative to start of SCN0 data: at the magic number
+* Padding is not accounted for, Swift automatically does that
+
+RRSCN File Format:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+u32                 | 'RRSC'                | Magic Number
+u32                 | compressionType
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+u32                 | 'SCN0'                | Magic Number
+u32                 | versionNumber         | if SCN0 layout changes, this is required to still decode older versions
+u32                 | fileSize              | Length in bytes of the whole file
+u32                 | sectionCount          | how many sections there are, for example in the case of: (INFO, DLTA) = 2 sections; sectionCount = 2        
+
+
+Table Of Contents:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---[ Entries (count: sectionCount) ]--- 
+u32                 | fourCC                | Four character code for section, for example: 'VERT'
+u32                 | flags                 | settings
+u32                 | totalSize             | size of section payload (data excluding this header)
+u32                 | dataOffset            | offset to payload (the data)
+
+
+
+Sections:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---[ Uniforms (Magic Number: `UNI0`) ]---
+uuid_t (8 bytes)    | sceneId
+float3              | cameraPosition
+simd_quatf          | cameraOrientation
+float               | cameraMoveSpeed
+float               | FOV
+float               | zNear
+float               | zFar
+
+
+---[ Vertices (Magic Number: 'VERT') ]---
+u32                 | vertexCount           | amount of vertices present in this section
+(Repeats `vertexCount` times) (struct Vertex)
+float3              | position
+float3              | normal
+float2              | UV
+
+
+---[ MaterialDatas (Magic Number: 'MAT0') ]---
+u32                 | materialCount
+(Repeats `materialCount` times)
+float4              | diffuseColor (Kd) (x, y, z), dissolve (w)
+float4              | emissionColor (Ke) (x y z), emissionIntensity (w)
+float4              | params: roughness (Pr) (x), metallic (PM) (y), IOR (z), isSky (w)
+u16                 | diffuseTextureIndex (map_Kd)
+u16                 | dissolveTextureIndex (map_d)
+
+
+---[ Rasterizer Indices (Magic Number: 'INDC') ]---
+u32                 | indexCount
+(Repeats `indexCount` times)
+u32                 | index
+
+
+---[ RayTracer Faces (Magic Number: 'RIDC') ]---
+u32                 | indexCount
+(Repeats `indexCount` times)
+u32                 | index
+
+
+---[ RayTracer Triangle Material Map (Magic Number: 'RTMM') ]---
+u32                 | triangleCount
+(repeats `triangleCount` times)
+u32                 | materialIndex
+
+
+---[ SubMeshes (Magic Number: 'SUBM' ) ]---
+u32                 | subMeshCount
+(Repeats `subMeshCount` times)
+u32                 | vertexOffset
+u32                 | vertexCount
+u32                 | indexOffset
+u32                 | indexCount
+u32                 | materialIndex
+u32                 | meshIndex
+
+
+---[ Meshes (Magic Number: 'MESH' ) ]---
+u32                                 | meshCount
+(Repeats `meshCount` times)
+uuid_t (8 bytes)                    | uuid
+uuid_t (8 bytes)                    | parent
+u32                                 | nameOffset
+u32                                 | subMeshOffset
+u32                                 | subMeshCount
+u32                                 | childrenCount
+[uuid_t (8 bytes); childrenCount]   | children
+float3                              | pivot
+float3                              | position
+float3                              | rotation
+float3                              | scale
+float3                              | localMinBounds
+float3                              | localMaxBounds
+
+
+---[ BLAS Nodes (Magic Number: 'BNOD') ]---
+u32                 | blasNodeCount
+(Repeats `blasNodeCount` times)
+float4              | minBoundsX
+float4              | minBoundsY
+float4              | minBoundsZ
+float4              | maxBoundsX
+float4              | maxBoundsY
+float4              | maxBoundsZ
+int4                | childIndices
+int4                | faceOffsets
+int4                | faceCounts
+
+
+---[ TLAS Instances (Magic Number: 'TINS) ]---
+u32                 | tlasInstanceCount
+(Repeats `tlasInstanceCount` times)
+float4x4            | modelMatrix
+float4x4            | invModelMatrix
+float3x3            | invNormalMatrix
+i32                 | blasStartIndex
+
+
+---[ TLAS Nodes (Magic Number: 'TNOD') ]---
+u64                 | tlasNodeCount
+(Repeats `tlasNodeCount` times)
+float4              | minBoundsX
+float4              | minBoundsY
+float4              | minBoundsZ
+float4              | maxBoundsX
+float4              | maxBoundsY
+float4              | maxBoundsZ
+int4                | childIndices
+int4                | tlasInstanceIndices
+
+
+
+---[ MaterialMetas (Magic Number: 'MATM') ]---
+u32                 | materialMetaCount
+(Repeats `materialMetaCount` times)
+uuid_t (8 bytes)    | uuid
+u32                 | materialNameOffset
+u32                 | materialDataIndex
+u32                 | diffuseTextureNameOffset (0 = no diffuse texture)
+u32                 | dissolveTextureNameOffset (0 = no dissolve texture)
+
+
+
+---[ String Pool (Magic Number: 'STRP' ) ]---
+// The first string is always the Scene name
+u32                 | stringCount
+(Repeats `stringCount` times, Exists out of fat-arrays of characters):
+u32                 | stringLength (including padding '\0' bytes for u32 alignment)
+[u8; stringLength]  | characterArray
+
+
+
+
+
+
+

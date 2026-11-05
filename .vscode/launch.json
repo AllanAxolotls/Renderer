@@ -25,20 +25,20 @@
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:Renderer}",
-            "name": "Debug Core",
-            "target": "Core",
+            "name": "Debug Main",
+            "target": "main",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug Core"
+            "preLaunchTask": "swift: Build Debug Main"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:Renderer}",
-            "name": "Release Core",
-            "target": "Core",
+            "name": "Release Main",
+            "target": "main",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release Core"
+            "preLaunchTask": "swift: Build Release Main"
         }
     ]
 }

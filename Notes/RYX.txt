@@ -1,0 +1,85 @@
+Ryx Scene File Format
+-----------------------------------------------------------------------------------
+
+< Main Header (Uncompressed) >
+u32  | Magic Number: 'RYXS'
+u32  | Version Number
+u32  | Compression Type {
+        0x0: No Compression
+        0x1: LSZFE
+}
+u32  | Flags {
+    first bit: endianness { 0: little (default), 1: big }
+}
+u64  | Table-of-Contents Offset
+u64  | Compressed Body Size
+u64  | Uncompressed Body Size
+...
+
+
+/*
+
+From here on out everything is compressed, offsets refer to uncompressed file
+This part is called the "Body" of the file
+
+*/
+
+
+< Table of Contents >
+u64  | Table Entry Count
+
+[ Repeats "Table Entry Count" times ] {
+    u32  | Entry Magic Number, a four character code
+    u32  | Entry Version Number
+    u64  | Entry Payload Byte Size
+    u64  | Entry Payload Absolute Byte Offset
+}
+
+
+---[ Ryx Version 0 Table Entries ]---
+
+Summary: {
+    Raw data:    { Vertices, Indices, MeshTris, BLAS, TLAS(Instance) }
+    Scene Graph: { Meshes, Materials, Camera, Scene, Textures }
+    Resources:   { MeshResource, MaterialResource, TextureResource, MeshLibrary, MaterialLibrary }
+}
+
+
+< Vertices           (Magic: 'VERT') >
+u32  | count
+-- array of vertices --
+
+< Indices            (Magic: 'INDC') >
+
+< Base Materials     (Magic: 'BMAT') >
+
+< MeshTris           (Magic: 'TRIS') >
+
+< BlasNode           (Magic: 'BLAS') >
+
+< TlasNode           (Magic: 'TLAS') >
+
+< TlasInstance       (Magic: 'TINS') >
+
+< Meshes             (Magic: 'MESH') >
+
+< Mesh Resources     (Magic: 'MSHR') >
+
+< Materials          (Magic: 'MATL') >
+
+< Material Resources (Magic: 'MTLR') >
+
+< Textures           (Magic: 'TEXT') >
+
+< Texture Resources  (Magic: 'TEXR') >
+
+< Mesh Library       (Magic: 'MSHL') >
+
+< Material Library   (Magic: 'MTLL') >
+
+// Scene Data: every object gets serialized: one array of objects with a Metadata block each
+// Every metadata block holds the type of the object as an enum so it can be cast back
+// Including a metadata size in the saved object itself
+< Scene Graph        (Magic: 'SCNG') >
+
+

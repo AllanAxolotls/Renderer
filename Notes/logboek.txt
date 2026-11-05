@@ -702,7 +702,7 @@ Door het inproduct te clampen is de texture eindelijk niet meer wit yess!!
 
 [ 00:24-02:15 (duur: 1 uur, 51 min.) ]
 Denken over hoe TLAS kan worden gesaved naar een binary file.
-Plannen van een Scene Binary File (Notes/SCN0.txt)
+Plannen van een Scene Binary File (Notes/RRSCN.txt)
 Veel voordelen: extreem snelle load times, scene deltas kunnen worden opgeslagen,
 editing simpeler, etc.
 Deltas = veranderingen aan de scene.
@@ -715,28 +715,540 @@ Ik ga proberen de BLAS beter te maken door de raytracing triangle structure een 
 Update: volgens mij is het niet beter.
 Andere QOL improvements gemaakt
 
+
+29-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 12:37-20:00 (duur: 7 uur, 23 min.) ]
+Verder werken aan RRSCN files, zodat de hele scene kan worden gesaved en snel kan worden
+hergeladen. Heel veel reworking.
+
+
+30-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:34-11:30 (duur: 1 uur, 56 min. ) ]
+Ik word helemaal gek van alle nieuwe errors. Het is heel moeilijk om nu alle geometry
+te herschrijven. Ik neem een pauze. 
+
+[15:30-17:36 (duur: 2 uur, 6 min.) ]
+Verder aan hetzelfde
+
+
+31-7-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:15-16:10 (duur: 6 uur, 55 min.) ]
+Nogsteeds verder aan errors fixen
+Notes: vergeet RayTracer.metal niet te fixen, texture handles toevoegen.
+Ook moeten dingen in raycast nodes nog worden geset
+Het is nu 15:33 en ik heb eindelijk weer beeld in de RayTracer (zonder Textures)
+Ik ga nu een TextureHandler maken zodat niet elke mogelijke texture een MTLTexture in VRAM
+wordt, maar alleen zichtbare textures in de huidige scene, met Mipmapping dat moet zorgen voor
+iets betere performance.
+
+
+1-8-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 15:22-21:27 (duur: 6 uur, 5 min.) ]
+Verder aan RRSCN file type. Het is nu 20:55 en ik heb EINDELIJK super-fast-reloading! De file RRSCN versie 0 is af!
+Nu hoef ik niet elke keer 1 minuut te wachten voor TLAS rebuilds wanneer dat niet nodig is. Ik moet nog wel een beetje gaan kijken
+hoe ik een Settings file ga toevoegen voor algemene instellingen zoals MouseSensitivity, en ook wil ik kijken hoe ik
+de oude Scene.jsons ga combineren met de nieuwe filetype. Nu is het veel makkelijker om als mens de .json te gebruiken om een scene
+te bouwen die de computer opslaat als een .rrscn (Rasterizer-Raytracer-Scene) Ik ben heel trots! Ik heb veel inspiratie genomen
+van .brres files (Wii 3D asset files) omdat ik daar een converter voor aan het maken was, dus ik kon al die kennis toepassen.
+Heb gefixt dat Absolute Paths worden gebruikt in .rrscn files, nu kunnen ze geshared worden!
+Nu moet ik de TextureHandler maken en hopen dat RayTracing nog in orde is na alle grote veranderingen.
+
+[ 21:35-21:50 (duur: 15 min. )]
+Ik wil nog eerst compression toevoegen aan de .rrscn omdat ik zie dat Area0.rrscn 28MB is. Kan altijd beter!
+Na compression: 10.2MB, :O
+
+[ 22:00-01:29 (duur: 3 uur, 29 min. ) ]
+Oke er waren heel veel haken en ogen aan die compression vast. Ik HEb ZOVEEL bugs moeten fixen, file format steeds moeten veranderen. Nu is het eindelijk eindelijk
+gelukt zonder gekke crashes ofzo. Ik wil "Import OBJ" toevoegen, maar voor nu ben ik content met de Apple Menus die zijn toegevoegd. Prioriteit gaat nu naar textures.
+
+
+2-8-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 12:04-14:42 (duur: 2 uur, 38 min. ) ]
+Veel codebase veranderingen. RenderHandler toegevoegd. Dependecies van veel classes veranderd.
+
+[ 19:01-22:23 (duur: 3 uur, 22 min. ) ]
+Sky bug eindelijk gefixt, bleek dat in mijn Scene Importer ik vergat een bitCast te doen van UInt naar Float
+waardoor de bitflags werden gecorrupt. Daarnaas tzit ik nog te vechten met een bug waarbij als je in een lege
+scene een obj import, dan is die niet zichtbaar in de rasterizer, wel in de raytracer?
+Iets gaat fout in ieder geval. Ook zorgt de file saven ineens voor een TLAS rebuild?
+Oke bugs zijn gefixt. NU kan ik eindelijk aan de TextureHandler.
+
+
+3-8-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 01:30-02:58 (duur: 1 uur, 28 min. ) ]
+Storage Mode Private testen voor MTLBuffers:
+Shared: ~280 MS op Area0.rrscn met resolutie 1920/2, 1080/2
+Private: ~270 MS, nauwelijks verschil (Vertex Buffer is nog steeds Shared)
+Ik juigde bijna te vroeg toen ik dacht dat mijn TextureHandler werkte, het het werkte voor RobloxWorld2 maar niet voor Area0
+meest bizarre texture glitch tot nu toe. Er zitten default textures in Area0 die er niet in horen
+Area0 crasht wel zodra ik naar RayTracen ga, komt waarschijnlijk door giga hoge texture resoluties
+Zelfde geldt voor Area7 :(, was eerst niet zo
+
+[ 11:34-14:17 (duur: 2 uur, 43 min. ) ]
+Proberen de TextureHandler te fixen. Ik denk dat de Area0 crash misschien komt door verkeerde texture indices? Ik hoop het
+Het blijft dat materials al een texture index hebben gekregen voordat ik uberhaupt ze een getal heb assigned.
+Ik heb de TextureHandler gefixt, lag eigenlijk aan de RRSCN file type met hoe die texture links opsloeg, dus ik heb
+texture links gewoon verwijderd. Blijkbaar is de performance gewoon afschuwelijk slecht geworden, misschien komt
+dat gewoon doordat ik nu wel hele hoge kwaliteit textures gebruik en voorheen niet, met de default texture van 1x1
+pixel is de performance namelijk best redelijk. Probeerde tiling toe te voegen aan de RayTracer in de hoop dat het
+dan wel werkt, maar nee! Fijn dat apple een timeout heeft op de gpu zeg, ECHT Echt fijn!
+
+
+31-8-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:52-17:11 (duur: 19 min. ) ]
+Ik ga een rollback doen op wat ik dacht dat de performance zou verbeteren, maar in de werkelijkheid juist negatieve effecten had.
+Ik git-clonede de oude versie erbij en het is oprecht 100x sneller met giga-grote-textures.
+Echt bizar! Zo zie je maar weer, optimization is echt een double-edged sword
+Ik zal moeten terugveranderen: RayTracer.metal, RRSCN.swift (zit eigenlijk pas in de aankomende git-commit dus deze wordt extra irritant), 
+en RayTracerRenderer.swift 
+
+
+1-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:40-15:10 (duur: 30 min. ) ]
+Ik heb een begin gemaakt aan de September deadline, waarbij ik de nieuwe planning moet inleveren + onderzoeksdata
+
+
+7-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:23-17:31 (duur: 1 uur, 8 min. ) ]
+Default Scene is nu Typical.rrscn
+Code Refactor
+
+[ 21:49-23:37 (duur: 1 uur, 48 min. ) ]
+Verder Code Refactor, NIET GELUKT, nieuwe bug, weer geen raytracing hoera!
+
+
+9-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:20-09:50 (duur: 1 uur, 30 min. ) ]
+Ben er achter gekomen dat de TLAS en BLAS in RayTracer.metal gewoon werken, maar iets gaat fout
+daarna hmm, nogsteeds raar
+Heb DEBUG_MODE toegevoegd eraan.
+
+[ 16:30-18:40 (duur: 2 uur, 10 min. ) ]
+Verder aan DEBUG_MODE, bug is OF door de BLAS structure OF door de traversal code daarvan
+Ik denk erover na om gewoon terug te stappen naar de oude versie en die weer op te bouwen
+want ik heb ergens een grote fout gemaakt
+
+
+12-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 18:56-22:05 (duur: 3 uur, 9 min. ) ]
+complete code rework, alles opnieuw van de grond op gebouwd, was flink nodig
+
+[ 22:20-00:40 (duur: 2 uur, 20 min. ) ]
+verder aan de volledige rework
+
+
+13-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 10:44-16:22 (duur: 5 uur, 38 min. ) ]
+verder aan de volledige rework, aan het eind eindelijk een driehoek op het
+scherm in de rasterizer, ik denk dat de rework mislukte omdat ik was vergeten
+de texture argument buffer index te weizigen en dat daarom alles gecorrupt was 
+
+[ 18:25-20:30 (duur: 2 uur, 5 min. ) ]
+verder aan rework, volgende keer aan obj importing weer, en grote RayTracer rework
+
+
+14-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 14:12-16:49 (duur: 2 uur, 37 min. ) ]
+Ik heb een BufferAllocator gemaakt die vertices, textures, indices en alle andere zooi
+kan allocaten, vrijmaken etc.
+
+[ 17:24-17:40 (duur: 16 min.) ]
+
+[ 21:40-01:15 (duur: 3 uur, 35 min. )]
+Verder aan rework van Mesh
+Ik ben echt trots op BufferAllocator.swift, helemaal zelf mijn eigen Allocator gemaakt
+
+
+15-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:08-12:10 (duur: 3 uur, 2 min. ) ]
+De engine heet vanaf nu Ryx, met .ryx als scene file, het staat ongeveer voor:
+Raytracing Graphics
+Ik heb BufferAllocator.swift verder uitgewerkt, nu is er realloc(),
+een nadeel is wel dat realloc() eerst de oude handle verwijdert, waardoor bij
+een volgende allocatie die faalt, het programma moet crashen.
+Ik wil beginnen aan een verbeterde ObjectImporter die aan zowel vertex als mesh "deduplicatie" doet
+deduplicatie = weghalen van duplicaties. Dit is een ingewikkeld proces:
+twee meshes kunnen dezelfde vorm hebben, maar een andere positie, andere rotatie en een andere scale
+Dit proces het "Canonicalizing". Hiermee kunnen ook tlasInstances gededupliceerd worden!
+Maar er is een andere manier: wel positie en scale normaliseren, maar rotatie hoeft niet met PCA ofzo:
+in het geval dat de vertexvolgorde hetzelfde is van twee meshes, kan je per driehoek in de mesh
+kijken of de hoeken van de driehoeken hetzelfde zijn!
+
+[ 14:30-17:30 (duur: 3 uur ) ]
+ModelResource.swift (.obj importer) af! Beginsel van Material Importer
+
+[ 22:15-01:40 (duur: 3 uur, 25 min. ) ]
+ik dacht dat ik klaar was met OBJ en MTL maar er is een free error
+
+
+16-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:58-09:42 (duur: 44 min. ) ]
+Blijkbaar unregistered helemaal niks vanzelf, de resources niet, de handles niet, niks
+Ik ben iets dichterbij de bug, waarschijnlijk zijn de NSRecursiveLocks niet nodig
+Alle handles worden verwijderd op dit moment.. en ook alle resources..
+
+[ 17:30-01:24 (duur: 7 uur, 54 min. ) ]
+MeshLibraryResource.swift af! Object importing en material importing is ZO veel beter
+ik had heel veel bugs die ik een-voor-een heb gefixt. Nu alleen nog textures
+weer toevoegen, maar die zullen ook VEEL beter zijn nu hopelijk!
+
+17-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:00-10:53 (duur: 2 uur, 53 min. ) ]
+Het was heel ingewikkeld maar ik heb ResourceHandles gemaakt, als het goed is werkt
+de garbage collector van de ResourceManager nu hopelijk
+
+[ 11:23-11:50 (duur: 27 min. ) ]
+
+[ 22:02-23:58 (duur: 1 uur, 56 min. ) ]
+Texture Resources toegevoegd, er zijn een paar bugs helaas
+
+18-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:13-16:30 (duur: 17 min.) ]
+
+[ 00:51-02:08 (duur: 1 uur, 17 min. ) ]
+Ik probeer die stomme bug te fixen, LUKT NIET, IK SNAP ER NIKS VAN 
+
+
+19-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:37-11:15 (duur: 1 uur, 38 min. ) ]
+Bug is eindelijk gefixt, bleek dat ik bij gelijkmatige materialen perongeluk resources
+zat te laden en weer verwijderen. Nu zijn de Mesh en Material Importer veel beter!
+
+[ 21:52-22:30 (duur: 38 min. )]
+Werken aan CollisionManager
+
+
+20-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:47-17:35 (duur: 3 uur, 48 min. ) ]
+Verder aan BLAS, TLAS en CollisionManager
+Ik wil heel makkelijk kunnen kiezen tussen BVH2 vs BVH4, zodat ik kan zien waar de performance
+het aller beste is
+Het is zo ongelofelijk moeilijk om de nieuwe BLAS nodes te designen.
+Ik wil Instancing: dat meshResources kunnen worden hergebruikt, met verschillende materialen.
+Stel je hebt 1 miljoen legosteentjes met allemaal verschillende kleurtjes, met het systeem dat ik nu
+heb moet ik 1 miljoen verschillende BLAS's maken omdat de materialen hardcoded in de BLAS zijn
+Het beste zou zijn: 1 Materiaal in de TlasInstance en dan ook 1 Materiaal per Mesh
+GEEN submeshes meer; dat betekent dat de OBJ importer bij 2 "usemtl"s for 1 Object, ze moet gaan splitten
+in twee meshes en ze dan groeperen. Het nadeel is vertex duplicatie en het is nogal ingewikkeld.
+Het voordeel is wel dat er geen submeshes dan zijn, de raytracer is sneller en de rasterizer is ook simpeler.
+Daarnaast is vertex duplicatie geen probleem als je het groter bekijkt: 1 miljoen aparte lego blokjes met aparte materialen
+of 1 shared material-loos mesh resource met 1 miljoen meshes met ieder 1 material
+
+TLDR: ik ga submeshes verwijderen, vanaf nu 1 Material per Mesh, OBJImporter moet worden veranderd 
+
+[ 19:31-22:13 (duur: 2 uur, 42 min. ) ]
+Nog lang niet klaar, heb bugs zitten fixen, QoL dingen, kan bijna aan de CollisionManager
+echt beginnen
+
+21-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 14:21-17:30 (duur: 3 uur, 9 min. ) ]
+
+[ 21:50-23:09 (duur: 1 uur, 19 min. ) ]
+texture links toegevoegd zodat BaseMaterial indices in sync zijn met de texture handle indices
+moet nog testen of het daadwerkelijk werkt
+
+
+22-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:36-17:42 (duur: 1 uur, 6 min.  ) ]
+Aan image creation, hele rare nieuwe bug, oude code vor image creation werkt niet meer?
+
+[ 21:52-23:50 (duur: 1 uur, 58 min. ) ]
+Start aan herschrijving RayTracing in Metal
+
+
+23-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:06-09:35 (duur: 29 min. ) ]
+
+[ 16:40-01:00 (duur: 8 uur, 20 min. )]
+HEEL veel verder aan raycasting op CPU
+
+
+24-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:30-10:00 (duur: 1 uur, 30 min. ) ]
+VEEL BUGS gefixt
+TODO: alle triangleIndices in de tlas zijn fout: ze gaan allemaal starten bij 0
+
+[ 10:33-11:30 (duur: 57 min. ) ]
+prive afspraak bespreking progressie + code
+
+[ 21:45-23:18 (duur: 1 uur, 33 min. ) ]
+Weer een bug gefixt, raycasting werkt weer op de CPU!
+
+25-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 19:00-21:10 (duur: 2 uur, 10 min. ) ]
+Raycasting op CPU af
+
+[ 22:13-01:58 (duur: 3 uur, 45 min. ) ]
+Raycasting op GPU programmeren
+Voltooid maar de performance is vele mate slechter?
+
+
+26-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 08:52-11:30 (duur: 2 uur, 38 min.  ) ]
+Performance fixen
+<< TOTATLE DUUR TOT NU TOE: 17009 MINUTEN OFTEWEL: 283 uur en 29 minuten... >>
+
+
+27-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:05-14:51 (duur: 1 uur, 46 min. ) ]
+De combinatie van Blas2 + Tlas4 is het best
+
+[ 17:22-20:48 (duur: 3 uur, 26 min. ) ]
+Er is een rare texture bug in de RayTracer bij RobloxRoom en Area0 die ik gewoon
+niet weet te fixen
+
+28-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 14:10-15:30 (duur: 1 uur, 20 min ) ]
+Texture bug gefixt, ipv MTLBuffer gebruik ik nu een normale SlotCollection,
+sowieso was een extra Buffer niet nodig.
+
+[ 16:37-17:32 (duur: 55 min. ) ]
+
+[ 21:39-23:35 (duur: 1 uur, 56 min.) ]
+RayTracing is eindelijk terug! De performance is heel anders? 
+Ik wil MipMapping en LOD toevoegen om dit tegen te strijden
+
+
+29-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 22:55-00:09 (duur: 1 uur, 14 min. ) ]
+Add TlasInstance to Mesh Class, bug: blas of tlas instance matcht niet per mesh, sinds invoering van
+instancing, positie en rotatie wel correct, depth testing niet, AABB waarschijnlijk fout
+
+
+30-9-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:03-09:35 (duur: 32 min. ) ]
+
+[ 15:34-17:30 (duur: 1 uur, 56 min. ) ]
+er is iets fout met mijn raytracing code, ik moet opnieuw kijken naar de formules dus
+ik ging PBRT lezen
+
+[ 22:07-23:00 (duur: 53 min. ) ]
+Verder lezen pbrt
+
+
+2-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 10:53-13:11 (duur: 2 uur, 18 min. ) ]
+Meer lezen over PBRT
+
+[ 19:21-22:07 (duur: 2 uur, 36 min. ) ]
+Test scenes maken voor raytracer
+
+
+4-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 16:05-18:15 (duur: 2 uur, 10 min. ) ]
+Nog beter de formules begrijpen van Monte Carlos
+Snap nu alles beter, Snell's Law, the Monte Carlo Estimator,
+Fresnel heeft nog wat verheldering nodig. Ik snap importance sampling beter!
+
+[ 20:58-21:24 (duur: 26 min. ) ]
+
+
+5-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 10:10-10:53 (duur: 43 min. ) ]
+
+[ 11:12-12:30 (duur: 1 uur, 18 min. ) ]
+PBRT lezen en source code lezen
+
+[ 13:18-14:20 (duur: 1 uur, 2 min. ) ]
+zelfde
+
+[ 16:01-16:30 (duur: 29 min. ) ]
+
+
+6-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 22:55-00:15 (duur: 1 uur, 20 min. ) ]
+Aan verslag, paar beginnende schetsen van tekst
+
+
+7-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:51-12:30 (duur: 39 min. ) ]
+Overstappen naar spectra raytracing en dat in het verslag verwerken.
+Er zijn verschillende spectra: ConstantSpectra (zwart-witte materialen)
+en RGBSpectra. Een Spectra wordt geconverteerd naar XYZ om de lichtkegels
+van een mens te simuleren. XYZ wordt daarna omgezet in RGB. 
+
+[ 14:37-15:15 (duur: ) ]
+Riemann Sum = stafen om integraal te estimaten
+XYZ is een colorspace, RGB ook, matrix multiplicatie om tussen
+de twee te converteren. RGB moet wel lineair zijn dus gamma factor moet weg.
+X, Y en Z zijn integralen van de golflengtes van de spd (Specular Power Distribution)
+
+
+13-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 15:30-17:14 (duur: 1 uur, 44 min. ) ]
+Verder aan verslag
+
+[ 23:52-01:50 (duur: 1 uur, 58 min. ) ]
+Verder aan verslag
+
+
+15-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 15:10-17:10 (duur: 2 uur ) ]
+Verder aan verslag
+
+
+16-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 12:09-12:52 (duur: 43 min. ) ]
+Ryx Scene files toevoegen
+
+[ 13:39-15:15 (duur: 1 uur, 36 min. ) ]
+Verder aan ryx scene files, nogsteeds bezig met saven
+
+[ 21:00-23:22 (duur: 2 uur, 22 min. ) ]
+Nog meer verder
+
+
+20-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 00:19-00:49 (duur: 40 min. ) ]
+Verder aan verslag
+
+[ 19:06-23:12 (duur: 4 uur, 6 min. ) ]
+Verder aan verslag en scene saving/loading
+
+
+21-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 10:50-11:20 (duur: 30 min. ) ]
+Verder aan verslag
+
+[ 13:33-14:20 (duur: 47 min. ) ]
+Verder aan verslag
+
+[ 17:42-19:33 (duur: 1 uur, 51 min. ) ]
+Verder aan verslag
+
+
+22-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 10:50-12:10 (duur: 1 uur, 40 min. ) ]
+Verder aan verslag
+
+[ 21:40-23:54 (duur: 2 uur, 14 min. ) ]
+Verder aan verslag
+
+
+23-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:10-13:33 (duur: 23 min. ) ]
+Verder aan verslag
+
+[ 17:00-19:30 (duur: 2uur, 30 min. ) ]
+Verder aan verslag
+ 
+
+27-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:37-14:20 (duur: 43 min. ) ]
+Verder aan verslag
+
+28-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:00-11:20 (duur: 20 min. ) ]
+Verder aan verslag
+
+[ 13:40-14:20 (duur: 40 min. ) ]
+Verder aan verslag
+
+29-10-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 11:20-12:10 (duur: 50 min. ) ]
+Verder aan verslag
+
+2-11-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 12:40-14:20 (duur: 1 uur, 40 min. ) ]
+Verder aan verslag
+
+[ 22:03-00:03 (duur 2 uur ) ]
+
+
+3-11-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 17:13-17:45 (duur: 32 min. ) ]
+Data verzamelen voor in tabellen.
+
+[ 21:22-02:30 (duur: 5 uur, 8 min. ) ]
+Aan versie 6 en 7
+
+
+4-11-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 13:38-14:20 (duur: 42 min. ) ]
+Verder aan verslag
+
+[ 17:00-22:10 (duur: 5 uur, 10 min. ) ]
+Verder aan v6 en verslag, gelukt BTDF toegevoegd, BSDF compleet 
+ben zeer tevreden.
+
+
+5-11-2026
+---------------------------------------------------------------------------------------------------------------------------------------------
+[ 09:20- ( ) ]
+Nieuwe scènes toevoegen en word document verder voorbereiden voor deadline.
+
+TODO:
+* nieuwe raytracer code gebruikt helemaal niet f_r, f_t en f_s meer, fix dat
+* vergeet niet veranderingen van gpu naar cpu over te brengen!
+
+
+
 Bugs: 
-* Normals worden nog niet helemaal goed gegenereerd wanneer ze missen in een .obj file
 * Transparency drawcall sorting is heel slecht
-* (IRRITANT) Soms loopt het programma vast in raytracing, als je dan switcht naar Rasterizer of het pauseerd, dan is het scherm bevroren,
-    soms glitcht het scherm gewoon en begint te haperen
-    soms bevroren voor altijd, maar kan wel heen en weer bewegen en raycasting update, scherm alleen niet
+* alpha testing is slecht, xlu en opa is niet genoeg, derde groep nodig voor alpha cutout?
 
 TODO: 
-* Verander IndexedFace naar TraversalFace, houd vertices + materialIndex
-als hit: shading array die direct naar UV en Normal indexed, shadingFaces[faceIndex] = vertexIndex
-* Als position verandert van een mesh, moet pivot dan mee?
+* Voeg Mutex toe aan Scene zodat tijdens het opslaan er geen veranderingen aan de scene kunnen worden gemaakt
+* Voeg AppKit UI toe
+* Maak TextureHandler async zodat textures niet het programma ophouden
+* Maak ResolvePath netjeser zodat het URL ipv string gebruikt
+* RayCones toevoegen voor mipmapping 
 * Voeg een isVisible optie toe aan TLASInstance en Mesh 
-* Voeg toe dat de TLAS en BLAS kunnen worden gecached in een file voor snellere loadtimes volgende keer
-* semaphores toevoegen aan zowel de rasterizer als raycaster
+* Maak het makkelijker om nieuwe materialen en meshes te registreren, duplicaties importeren werkt niet rn
 
 =============================================================================================================================================
 
 TODO:
-MIS
-specular color met specular probability toevoegen van sebstian lague's video
+MIS (Multiple Importance Sampling)
 add lightsources to raytracer
-add mesh editor, scene saving, importing via GUI
+add mesh editor
 add Sun Position changer with MouseButtonRight
 lightsources toevoegen aan rasterizer
 
